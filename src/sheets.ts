@@ -147,35 +147,20 @@ function mapAi(rows: Record<string, string>[]) {
   })).filter(r => r.flow_name !== '');
 }
 
-async function fetchSheetList(): Promise<string[]> {
-  try {
-    const res = await fetch(BASE_URL + 'html', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YipinDashboard/1.0)' },
-    });
-    if (!res.ok) throw new Error('pubhtml failed');
-    const text = await res.text();
-    const names: string[] = [];
-    const re = /sheet=([^&"'\s\)]+)/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) {
-      const name = decodeURIComponent(m[1]);
-      if (!names.includes(name)) names.push(name);
-    }
-    if (names.length > 0) return names;
-  } catch { /* fall through */ }
-
+function fetchSheetList(): string[] {
+  // 固定列表 + 当前月及前5个月自动生成，总请求数控制在 50 以内
+  const all: string[] = [...KNOWN_SHEETS];
   const now = new Date();
-  const generated: string[] = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 6; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const yy = String(d.getFullYear()).slice(2);
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const p = `${yy}${mm}`;
-    for (const s of ['广告明细YP', '审查台账YP', '审核记录YP', '审查台帐YP', '广告明细YPFH', '审查台账YPFH'])
-      generated.push(`${p}-${s}`);
+    for (const s of ['广告明细YP', '审查台账YP', '审核记录YP', '审查台帐YP', '广告明细YPFH', '审查台账YPFH']) {
+      const name = `${p}-${s}`;
+      if (!all.includes(name)) all.push(name);
+    }
   }
-  const all = [...KNOWN_SHEETS];
-  for (const s of generated) if (!all.includes(s)) all.push(s);
   return all;
 }
 
@@ -183,7 +168,7 @@ export async function fetchAllData() {
   const acc = { ads: [] as ReturnType<typeof mapAds>, reviews: [] as ReturnType<typeof mapReviews>, keywords: [] as ReturnType<typeof mapKeywords>, tasks: [] as ReturnType<typeof mapTasks>, ai: [] as ReturnType<typeof mapAi> };
   let successCount = 0;
 
-  const sheetNames = await fetchSheetList();
+  const sheetNames = fetchSheetList();
 
   await Promise.all(sheetNames.map(async (name) => {
     const brand = getBrand(name);
