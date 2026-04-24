@@ -1,0 +1,7 @@
+name = "yp"
+main = "src/index.ts"
+compatibility_date = "2024-09-09"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"

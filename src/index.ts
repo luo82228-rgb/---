@@ -1,25 +1,32 @@
-import { fetchAllData } from './_sheets';
+import { fetchAllData } from './sheets';
 
-// 用内部虚拟 URL 作为缓存键（必须是 http/https）
+interface Env {
+  ASSETS: Fetcher;
+}
+
 const CACHE_KEY = 'https://cache.yipin-internal/api/data/v1';
-const CACHE_TTL = 60; // 秒
+const CACHE_TTL = 60;
 
-export const onRequestGet: PagesFunction = async () => {
-  const cache = caches.default;
-  const cacheReq = new Request(CACHE_KEY);
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const { pathname } = new URL(request.url);
 
-  const cached = await cache.match(cacheReq);
-  if (cached) {
-    const res = new Response(cached.body, {
-      status: cached.status,
-      headers: new Headers(cached.headers),
-    });
-    res.headers.set('X-Cache', 'HIT');
-    return res;
-  }
+    if (pathname === '/api/all') {
+      const cache = caches.default;
+      const cached = await cache.match(new Request(CACHE_KEY));
+      if (cached) return cached;
+      return buildAndCache(cache);
+    }
 
-  return buildAndCache(cache);
-};
+    if (pathname === '/api/refresh') {
+      const cache = caches.default;
+      await cache.delete(new Request(CACHE_KEY));
+      return buildAndCache(cache);
+    }
+
+    return env.ASSETS.fetch(request);
+  },
+} satisfies ExportedHandler<Env>;
 
 async function buildAndCache(cache: Cache): Promise<Response> {
   try {
@@ -28,10 +35,8 @@ async function buildAndCache(cache: Cache): Promise<Response> {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': `public, max-age=${CACHE_TTL}`,
-        'X-Cache': 'MISS',
       },
     });
-    // 异步写缓存，不阻塞响应
     cache.put(new Request(CACHE_KEY), res.clone());
     return res;
   } catch (err) {

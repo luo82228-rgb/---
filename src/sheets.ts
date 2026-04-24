@@ -1,8 +1,6 @@
-// Google Sheets 公开发布的基础 URL（pub 格式）
 const BASE_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYjTwWrWGzl6iPrqmxp8rldOod7jhtWG8guYRo5RFOe1xXfo6DwxsIZ7mHJUP0EBq2xtGpo0zOEZOi/pub';
 
-// 已知工作表（兜底列表）
 const KNOWN_SHEETS = [
   '2601-广告明细YP', '2601-审核记录YP',
   '2602-广告明细YP', '2602-审核记录YP',
@@ -11,8 +9,6 @@ const KNOWN_SHEETS = [
   '2604-广告明细YPFH', '2604-审查台账YPFH',
   '关键词提醒yp', '关键词提醒ypfh', '项目资源YP-YPFH',
 ];
-
-// ── 表名识别 ────────────────────────────────────────────
 
 function getBrand(name: string): string | null {
   if (/YPFH|ypfh/i.test(name)) return '逸品孵化';
@@ -28,8 +24,6 @@ function getModule(name: string): 'ads' | 'reviews' | 'keywords' | 'tasks' | 'ai
   if (/AI成效|ai成效/i.test(name)) return 'ai';
   return null;
 }
-
-// ── CSV 解析（支持引号字段、跳过空行空列、自动找表头行）──
 
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text.trim().split(/\r?\n/);
@@ -49,23 +43,17 @@ function parseCsv(text: string): Record<string, string>[] {
     return result;
   }
 
-  // 找第一个有 >=2 列实质内容的行作为表头
   let headerIdx = -1;
   let headers: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const cols = splitLine(lines[i]);
     if (cols.filter(c => c !== '').length >= 2) {
-      headerIdx = i;
-      headers = cols;
-      break;
+      headerIdx = i; headers = cols; break;
     }
   }
   if (headerIdx < 0) return [];
 
-  const validIdx = headers.reduce<number[]>((acc, h, i) => {
-    if (h !== '') acc.push(i);
-    return acc;
-  }, []);
+  const validIdx = headers.reduce<number[]>((acc, h, i) => { if (h !== '') acc.push(i); return acc; }, []);
   const cleanHeaders = validIdx.map(i => headers[i]);
 
   const rows: Record<string, string>[] = [];
@@ -73,45 +61,13 @@ function parseCsv(text: string): Record<string, string>[] {
     const cols = splitLine(lines[i]);
     if (!cols.filter(c => c !== '').length) continue;
     const obj: Record<string, string> = {};
-    cleanHeaders.forEach((h, j) => {
-      obj[h] = (cols[validIdx[j]] ?? '').trim();
-    });
+    cleanHeaders.forEach((h, j) => { obj[h] = (cols[validIdx[j]] ?? '').trim(); });
     rows.push(obj);
   }
   return rows;
 }
 
-// ── 字段映射 ────────────────────────────────────────────
-
-type AdItem = {
-  ad_no: string; brand: string; biz_name: string;
-  new_group: string; old_group: string; ad_type: string;
-  ad_mode: string; amount: string; pay_status: string;
-  pay_time: string; expire_time: string; recorder: string;
-};
-type ReviewItem = {
-  date: string; brand: string; target: string; reviewer: string;
-  ad_no: string; scene: string; method: string;
-  has_issue: string; risk_level: string; is_fixed: string; is_closed: string;
-};
-type KeywordItem = {
-  no: string; brand: string; source: string; sender: string;
-  keyword: string; content: string; log_time: string;
-  issue_desc: string; status: string; reviewer: string;
-};
-type TaskItem = {
-  task_name: string; priority: string; reviewer: string;
-  status: string; progress: string; start_time: string;
-  end_time: string; milestone: string; remark: string;
-};
-type AiItem = {
-  flow_no: string; flow_name: string; summary: string; reviewer: string;
-  input: string; output: string; steps: string; tools: string;
-  trigger: string; frequency: string; save_time: string;
-  status: string; remark: string;
-};
-
-function mapAds(rows: Record<string, string>[], brand: string): AdItem[] {
+function mapAds(rows: Record<string, string>[], brand: string) {
   return rows.map(r => ({
     ad_no: r['广告编号'] ?? '',
     brand: brand || r['品牌'] || '',
@@ -128,7 +84,7 @@ function mapAds(rows: Record<string, string>[], brand: string): AdItem[] {
   })).filter(r => r.ad_no !== '');
 }
 
-function mapReviews(rows: Record<string, string>[], brand: string): ReviewItem[] {
+function mapReviews(rows: Record<string, string>[], brand: string) {
   return rows.map(r => ({
     date: r['审查日期'] || r['日期'] || '',
     brand: brand || r['品牌'] || '',
@@ -144,7 +100,7 @@ function mapReviews(rows: Record<string, string>[], brand: string): ReviewItem[]
   })).filter(r => r.date !== '' || r.ad_no !== '');
 }
 
-function mapKeywords(rows: Record<string, string>[], brand: string): KeywordItem[] {
+function mapKeywords(rows: Record<string, string>[], brand: string) {
   return rows.map(r => ({
     no: r['编号'] ?? '',
     brand: brand || r['品牌'] || '',
@@ -159,7 +115,7 @@ function mapKeywords(rows: Record<string, string>[], brand: string): KeywordItem
   })).filter(r => r.keyword !== '' || r.content !== '');
 }
 
-function mapTasks(rows: Record<string, string>[]): TaskItem[] {
+function mapTasks(rows: Record<string, string>[]) {
   return rows.map(r => ({
     task_name: r['任务列表'] || r['任务名称'] || '',
     priority: r['优先级'] ?? '',
@@ -173,7 +129,7 @@ function mapTasks(rows: Record<string, string>[]): TaskItem[] {
   })).filter(r => r.task_name !== '');
 }
 
-function mapAi(rows: Record<string, string>[]): AiItem[] {
+function mapAi(rows: Record<string, string>[]) {
   return rows.map(r => ({
     flow_no: r['工作流编号'] ?? '',
     flow_name: r['工作流名称'] ?? '',
@@ -191,81 +147,50 @@ function mapAi(rows: Record<string, string>[]): AiItem[] {
   })).filter(r => r.flow_name !== '');
 }
 
-// ── 获取工作表列表 ──────────────────────────────────────
-
 async function fetchSheetList(): Promise<string[]> {
   try {
-    const htmlUrl = BASE_URL + 'html';
-    const res = await fetch(htmlUrl, {
+    const res = await fetch(BASE_URL + 'html', {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YipinDashboard/1.0)' },
     });
-    if (!res.ok) throw new Error('pubhtml fetch failed');
+    if (!res.ok) throw new Error('pubhtml failed');
     const text = await res.text();
-
-    const sheetNames: string[] = [];
+    const names: string[] = [];
     const re = /sheet=([^&"'\s\)]+)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
       const name = decodeURIComponent(m[1]);
-      if (!sheetNames.includes(name)) sheetNames.push(name);
+      if (!names.includes(name)) names.push(name);
     }
-    if (sheetNames.length > 0) return sheetNames;
-  } catch {
-    // fall through to fallback
-  }
+    if (names.length > 0) return names;
+  } catch { /* fall through */ }
 
-  // 兜底：已知工作表 + 按月生成近12个月候选表名
   const now = new Date();
   const generated: string[] = [];
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const yy = String(d.getFullYear()).slice(2);
     const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const prefix = `${yy}${mm}`;
-    for (const s of ['广告明细YP', '审查台账YP', '审核记录YP', '审查台帐YP', '广告明细YPFH', '审查台账YPFH']) {
-      generated.push(`${prefix}-${s}`);
-    }
+    const p = `${yy}${mm}`;
+    for (const s of ['广告明细YP', '审查台账YP', '审核记录YP', '审查台帐YP', '广告明细YPFH', '审查台账YPFH'])
+      generated.push(`${p}-${s}`);
   }
   const all = [...KNOWN_SHEETS];
-  for (const s of generated) {
-    if (!all.includes(s)) all.push(s);
-  }
+  for (const s of generated) if (!all.includes(s)) all.push(s);
   return all;
 }
 
-// ── 主数据拉取函数 ──────────────────────────────────────
-
-export interface DashboardData {
-  success: boolean;
-  updated_at: string;
-  sheet_count: number;
-  ads: AdItem[];
-  reviews: ReviewItem[];
-  keywords: KeywordItem[];
-  tasks: TaskItem[];
-  ai_items: AiItem[];
-}
-
-export async function fetchAllData(): Promise<DashboardData> {
-  const acc = {
-    ads: [] as AdItem[],
-    reviews: [] as ReviewItem[],
-    keywords: [] as KeywordItem[],
-    tasks: [] as TaskItem[],
-    ai: [] as AiItem[],
-  };
+export async function fetchAllData() {
+  const acc = { ads: [] as ReturnType<typeof mapAds>, reviews: [] as ReturnType<typeof mapReviews>, keywords: [] as ReturnType<typeof mapKeywords>, tasks: [] as ReturnType<typeof mapTasks>, ai: [] as ReturnType<typeof mapAi> };
   let successCount = 0;
 
   const sheetNames = await fetchSheetList();
 
-  const fetchOne = async (sheetName: string): Promise<void> => {
-    const brand = getBrand(sheetName);
-    const mod = getModule(sheetName);
+  await Promise.all(sheetNames.map(async (name) => {
+    const brand = getBrand(name);
+    const mod = getModule(name);
     if (!brand || !mod) return;
-
     try {
-      const url = `${BASE_URL}?output=csv&sheet=${encodeURIComponent(sheetName)}`;
-      const res = await fetch(url, {
+      const res = await fetch(`${BASE_URL}?output=csv&sheet=${encodeURIComponent(name)}`, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YipinDashboard/1.0)' },
       });
       if (!res.ok) return;
@@ -273,36 +198,20 @@ export async function fetchAllData(): Promise<DashboardData> {
       if (!text.trim()) return;
       const rows = parseCsv(text);
       if (!rows.length) return;
-
       if (mod === 'ads') acc.ads.push(...mapAds(rows, brand));
       if (mod === 'reviews') acc.reviews.push(...mapReviews(rows, brand));
       if (mod === 'keywords') acc.keywords.push(...mapKeywords(rows, brand));
       if (mod === 'tasks') acc.tasks.push(...mapTasks(rows));
       if (mod === 'ai') acc.ai.push(...mapAi(rows));
       successCount++;
-    } catch {
-      // 单张表失败不中断整体
-    }
-  };
+    } catch { /* 单表失败不中断 */ }
+  }));
 
-  await Promise.all(sheetNames.map(fetchOne));
-
-  const now = new Date();
-  const updated_at = now.toLocaleString('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    hour12: false,
+  const updated_at = new Date().toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai', hour12: false,
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   }).replace(/\//g, '-');
 
-  return {
-    success: true,
-    updated_at,
-    sheet_count: successCount,
-    ads: acc.ads,
-    reviews: acc.reviews,
-    keywords: acc.keywords,
-    tasks: acc.tasks,
-    ai_items: acc.ai,
-  };
+  return { success: true, updated_at, sheet_count: successCount, ads: acc.ads, reviews: acc.reviews, keywords: acc.keywords, tasks: acc.tasks, ai_items: acc.ai };
 }
