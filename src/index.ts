@@ -24,17 +24,31 @@ export default {
       return buildAndCache(cache);
     }
 
-    // 临时调试：测试能否抓取谷歌表格
+    // 调试：逐步测试抓取 + 解析流程
     if (pathname === '/api/debug') {
-      const testUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYjTwWrWGzl6iPrqmxp8rldOod7jhtWG8guYRo5RFOe1xXfo6DwxsIZ7mHJUP0EBq2xtGpo0zOEZOi/pub?output=csv&sheet=2604-%E5%B9%BF%E5%91%8A%E6%98%8E%E7%BB%86YP';
+      const BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYjTwWrWGzl6iPrqmxp8rldOod7jhtWG8guYRo5RFOe1xXfo6DwxsIZ7mHJUP0EBq2xtGpo0zOEZOi/pub';
+      const sheetName = '2604-广告明细YP';
+      const csvUrl = `${BASE}?output=csv&sheet=${encodeURIComponent(sheetName)}`;
       try {
-        const res = await fetch(testUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const res = await fetch(csvUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         const text = await res.text();
+        const lines = text.trim().split(/\r?\n/);
+        // 找表头行
+        let headerIdx = -1, headers: string[] = [];
+        for (let i = 0; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.trim());
+          if (cols.filter(c => c !== '').length >= 2) { headerIdx = i; headers = cols; break; }
+        }
+        // 数据行数
+        const dataRows = lines.slice(headerIdx + 1).filter(l => l.replace(/,/g,'').trim() !== '').length;
         return new Response(JSON.stringify({
           status: res.status,
           ok: res.ok,
-          url: res.url,
-          preview: text.slice(0, 500),
+          totalLines: lines.length,
+          headerIdx,
+          headers: headers.filter(h => h !== ''),
+          dataRows,
+          firstDataLine: lines.slice(headerIdx + 1).find(l => l.replace(/,/g,'').trim() !== ''),
         }), { headers: { 'Content-Type': 'application/json' } });
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e) }), { headers: { 'Content-Type': 'application/json' } });
