@@ -4,3 +4,8 @@ dist/
 .DS_Store
 *.env
 .dev.vars
+
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
