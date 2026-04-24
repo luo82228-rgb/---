@@ -24,6 +24,23 @@ export default {
       return buildAndCache(cache);
     }
 
+    // 临时调试：测试能否抓取谷歌表格
+    if (pathname === '/api/debug') {
+      const testUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYjTwWrWGzl6iPrqmxp8rldOod7jhtWG8guYRo5RFOe1xXfo6DwxsIZ7mHJUP0EBq2xtGpo0zOEZOi/pub?output=csv&sheet=2604-%E5%B9%BF%E5%91%8A%E6%98%8E%E7%BB%86YP';
+      try {
+        const res = await fetch(testUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const text = await res.text();
+        return new Response(JSON.stringify({
+          status: res.status,
+          ok: res.ok,
+          url: res.url,
+          preview: text.slice(0, 500),
+        }), { headers: { 'Content-Type': 'application/json' } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }), { headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
