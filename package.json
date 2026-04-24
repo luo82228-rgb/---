@@ -3,11 +3,6 @@
   "private": true,
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
-    "typescript": "^5.0.0",
-    "wrangler": "^3.0.0"
-  },
-  "scripts": {
-    "dev": "wrangler pages dev public --compatibility-date=2024-01-01",
-    "deploy": "wrangler pages deploy public"
+    "typescript": "^5.0.0"
   }
 }
