@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>业务审查部-逸品/逸品孵化</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  display:flex;flex-direction:column;transition:background .5s,color .5s}
+
+/* ══════════════════════════════════════
+   CSS 变量 — 夜览（默认）
+══════════════════════════════════════ */
+:root{
+  --bg-base:#0f1117;
+  --bg-panel:#13151f;
+  --bg-card:#1a1d2e;
+  --bg-hover:#1e2540;
+  --bg-input:#0f1117;
+  --border:#2d3250;
+  --border-hover:#3d4270;
+  --text-primary:#e2e8f0;
+  --text-secondary:#94a3b8;
+  --text-muted:#64748b;
+  --text-faint:#475569;
+  --accent:#7c8cf8;
+  --accent-dim:#7c8cf820;
+  --th-bg:#0f1117;
+  --row-border:#1e2235;
+  --brand-bg:#2d3250;
+  --brand-color:#94a3b8;
+  --scrollbar:#2d3250;
+  --toast-bg:#1a1d2e;
+  --mode-icon:🌙;
+}
+
+/* ══════════════════════════════════════
+   CSS 变量 — 白天
+══════════════════════════════════════ */
+body.day{
+  --bg-base:#f0f2f7;
+  --bg-panel:#ffffff;
+  --bg-card:#ffffff;
+  --bg-hover:#f1f4fa;
+  --bg-input:#f8f9fc;
+  --border:#dde1ec;
+  --border-hover:#b8bfd4;
+  --text-primary:#1a1d2e;
+  --text-secondary:#4a5270;
+  --text-muted:#6b7394;
+  --text-faint:#9099b8;
+  --accent:#5a6ef0;
+  --accent-dim:#5a6ef015;
+  --th-bg:#f4f6fb;
+  --row-border:#eef0f8;
+  --brand-bg:#e8eaf6;
+  --brand-color:#5a6ef0;
+  --scrollbar:#dde1ec;
+  --toast-bg:#ffffff;
+  --mode-icon:☀️;
+}
+
+body{background:var(--bg-base);color:var(--text-primary)}
+
+/* ── 顶栏 ── */
+.topbar{height:50px;background:var(--bg-panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;flex-shrink:0;z-index:10;
+  transition:background .5s,border-color .5s}
+.top-title{font-size:15px;font-weight:700;color:var(--accent);letter-spacing:.5px}
+.live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);margin-left:auto}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);transition:background .3s}
+.ldot.on{background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#utime{color:var(--text-faint)}
+
+.sync-btn{display:flex;align-items:center;gap:5px;margin-left:6px;padding:5px 10px;
+  font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);
+  color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap}
+.sync-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sync-btn:disabled{opacity:.5;cursor:default}
+
+/* 日夜切换按钮 */
+.theme-btn{display:flex;align-items:center;gap:4px;margin-left:6px;padding:5px 10px;
+  font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);
+  color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap;user-select:none}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+#themeIcon{font-size:13px}
+#themeLabel{font-size:11px}
+
+/* 日出日落提示 */
+#sunInfo{font-size:10px;color:var(--text-faint);white-space:nowrap}
+
+/* ── 侧栏 ── */
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:190px;background:var(--bg-panel);border-right:1px solid var(--border);
+  flex-shrink:0;padding:12px 0;overflow-y:auto;transition:background .5s,border-color .5s}
+.nav-lbl{font-size:10px;font-weight:600;color:var(--text-faint);letter-spacing:1px;
+  padding:0 14px 6px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:10px 14px;
+  cursor:pointer;color:var(--text-muted);font-size:13px;
+  border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-secondary)}
+.nav-item.on{background:var(--bg-hover);color:var(--accent);border-left-color:var(--accent)}
+.nav-ico{font-size:15px;flex-shrink:0}
+.nav-short{display:none}
+.nav-cnt{margin-left:auto;background:var(--brand-bg);color:var(--text-muted);font-size:10px;
+  font-weight:600;border-radius:10px;padding:1px 6px;min-width:22px;text-align:center}
+.nav-item.on .nav-cnt{background:var(--accent-dim);color:var(--accent)}
+
+/* ── 内容 ── */
+.content{flex:1;overflow-y:auto;padding:16px}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:4px}
+.page{display:none}.page.on{display:block}
+
+/* ── 筛选条 ── */
+.pf{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;
+  padding:10px 14px;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;transition:background .5s,border-color .5s}
+.pf-lbl{font-size:12px;color:var(--text-muted);white-space:nowrap}
+.pf-div{width:1px;height:16px;background:var(--border);flex-shrink:0}
+.qbtn-g{display:flex;gap:3px}
+.qbtn{font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);
+  background:transparent;color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap}
+.qbtn:hover,.qbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.f-date{font-size:12px;padding:4px 7px;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:5px;color:var(--text-primary);outline:none;width:124px;transition:background .5s}
+.f-date:focus{border-color:var(--accent)}
+.f-sep{color:var(--text-muted);font-size:12px}
+.f-sel{font-size:12px;padding:4px 8px;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:5px;color:var(--text-primary);outline:none;cursor:pointer;transition:background .5s}
+.search{font-size:12px;padding:4px 10px;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:5px;color:var(--text-primary);outline:none;width:180px;margin-left:auto;transition:background .5s}
+.search:focus{border-color:var(--accent)}
+
+/* ── 统计卡 ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px}
+.scard{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0;
+  transition:background .5s,border-color .5s}
+.scard .sv{font-size:24px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:5px}
+.scard .sl{font-size:11px;color:var(--text-muted)}
+.scard.warn .sv{color:#f59e0b}.scard.danger .sv{color:#ef4444}.scard.ok .sv{color:#22c55e}
+
+/* ── 表格框 ── */
+.tbox{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;
+  transition:background .5s,border-color .5s}
+.tbox-head{display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px;border-bottom:1px solid var(--border)}
+.tbox-title{font-size:13px;font-weight:600}
+.t-count{font-size:12px;color:var(--text-muted)}
+.t-wrap{overflow-x:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:12px}
+table.dt thead th{background:var(--th-bg);padding:9px 12px;text-align:left;color:var(--text-muted);
+  font-weight:600;white-space:nowrap;position:sticky;top:0;border-bottom:1px solid var(--border);
+  transition:background .5s}
+table.dt tbody tr{border-bottom:1px solid var(--row-border);transition:background .12s}
+table.dt tbody tr:hover{background:var(--bg-hover)}
+table.dt tbody td{padding:8px 12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--text-primary)}
+table.dt tbody td.wrap{white-space:normal;max-width:260px;line-height:1.4}
+
+/* ── 徽章 ── */
+.b{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500;white-space:nowrap}
+.b-g{background:#14532d30;color:#16a34a;border:1px solid #14532d60}
+body.day .b-g{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
+.b-r{background:#7f1d1d30;color:#f87171;border:1px solid #7f1d1d60}
+body.day .b-r{background:#fee2e2;color:#dc2626;border-color:#fecaca}
+.b-y{background:#78350f30;color:#d97706;border:1px solid #78350f60}
+body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
+.b-gr{background:var(--bg-hover);color:var(--text-secondary);border:1px solid var(--border)}
+.b-bl{background:#1e3a5f30;color:#60a5fa;border:1px solid #1e3a5f60}
+body.day .b-bl{background:#dbeafe;color:#2563eb;border-color:#bfdbfe}
+.brand{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;
+  background:var(--brand-bg);color:var(--brand-color)}
+code.adno{color:var(--accent);font-size:11px;font-family:monospace}
+
+/* ── 空态 ── */
+.empty{text-align:center;padding:50px 20px;color:var(--text-faint)}
+.empty .ei{font-size:36px;margin-bottom:10px}.empty .et{font-size:13px}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--toast-bg);
+  border:1px solid #22c55e55;border-radius:9px;padding:9px 14px;
+  font-size:12px;color:#22c55e;opacity:0;transform:translateY(6px);
+  transition:all .3s;pointer-events:none;z-index:99;
+  box-shadow:0 4px 20px rgba(0,0,0,.15)}
+#toast.show{opacity:1;transform:translateY(0)}
+
+@media (max-width:768px){
+  html,body{height:100%;overflow:hidden}
+  .topbar{padding:0 10px;height:46px;flex-shrink:0}
+  .top-title{font-size:12px}
+  #ltext,#utime,#sunInfo{display:none}
+  .sync-btn{padding:4px 8px;font-size:11px}
+  #themeLabel{display:none}
+  .layout{display:flex;flex-direction:column;height:calc(100vh - 46px);overflow:hidden}
+  .sidebar{width:100% !important;height:50px;flex-shrink:0;
+    display:flex !important;flex-direction:row;
+    overflow:hidden;padding:0;
+    border-right:none;border-bottom:1px solid var(--border);position:static}
+  .nav-lbl{display:none}
+  .nav-item{flex:none !important;width:calc(100% / 6) !important;
+    flex-direction:column;align-items:center;justify-content:center;
+    padding:4px 2px;gap:2px;
+    border-left:none;border-bottom:3px solid transparent;
+    font-size:9px;text-align:center;white-space:nowrap;overflow:hidden}
+  .nav-item.on{border-left-color:transparent !important;border-bottom-color:var(--accent);
+    background:var(--bg-hover);color:var(--accent)}
+  .nav-ico{font-size:18px}
+  .nav-cnt{display:none}
+  .nav-full{display:none}
+  .nav-short{display:inline}
+  .content{flex:1;overflow-y:auto;overflow-x:visible;padding:10px;-webkit-overflow-scrolling:touch}
+  .pf{gap:6px;padding:8px 10px}
+  .pf-div{display:none}
+  .f-date{width:108px;font-size:11px}
+  .search{width:100%;margin-left:0;margin-top:2px}
+  .f-sel{font-size:11px}
+  .qbtn{font-size:11px;padding:4px 8px}
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .scard{padding:12px}.scard .sv{font-size:22px}
+  .tbox{border-radius:8px}
+  .t-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.dt{min-width:560px}
+  table.dt thead th{padding:7px 9px;font-size:11px}
+  table.dt tbody td{padding:6px 9px;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="top-title">业务审查部-逸品/逸品孵化</div>
+  <div class="live">
+    <div class="ldot" id="ldot"></div>
+    <span id="ltext">加载中…</span>
+    <span style="color:var(--border);margin:0 2px">·</span>
+    <span id="utime"></span>
+    <span id="sunInfo"></span>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">
+      <span id="themeIcon">🌙</span><span id="themeLabel">夜览</span>
+    </button>
+    <button class="sync-btn" id="refreshBtn" onclick="manualRefresh()">
+      <span id="refreshIcon">🔄</span><span id="refreshTxt">同步数据</span>
+    </button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-lbl">导航</div>
+    <div class="nav-item on" data-page="overview" onclick="nav(this)">
+      <span class="nav-ico">📊</span><span class="nav-full">业务总览</span><span class="nav-short">总览</span>
+    </div>
+    <div class="nav-item" data-page="ads" onclick="nav(this)">
+      <span class="nav-ico">📋</span><span class="nav-full">广告明细</span><span class="nav-short">广告</span>
+      <span class="nav-cnt" id="cnt-ads">-</span>
+    </div>
+    <div class="nav-item" data-page="reviews" onclick="nav(this)">
+      <span class="nav-ico">🔍</span><span class="nav-full">审查台帐</span><span class="nav-short">审查</span>
+      <span class="nav-cnt" id="cnt-reviews">-</span>
+    </div>
+    <div class="nav-item" data-page="keywords" onclick="nav(this)">
+      <span class="nav-ico">🔑</span><span class="nav-full">关键词监控</span><span class="nav-short">关键词</span>
+      <span class="nav-cnt" id="cnt-kw">-</span>
+    </div>
+    <div class="nav-item" data-page="tasks" onclick="nav(this)">
+      <span class="nav-ico">✅</span><span class="nav-full">任务清单</span><span class="nav-short">任务</span>
+      <span class="nav-cnt" id="cnt-tasks">-</span>
+    </div>
+    <div class="nav-item" data-page="ai" onclick="nav(this)">
+      <span class="nav-ico">🤖</span><span class="nav-full">AI成效</span><span class="nav-short">AI</span>
+      <span class="nav-cnt" id="cnt-ai">-</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- 业务总览 -->
+    <div class="page on" id="page-overview">
+      <div class="pf">
+        <span class="pf-lbl">时间：</span>
+        <div class="qbtn-g" id="ov-qbtns">
+          <button class="qbtn on" onclick="setPreset('overview','today',this)">今天</button>
+          <button class="qbtn" onclick="setPreset('overview','lastweek',this)">上周</button>
+          <button class="qbtn" onclick="setPreset('overview','week',this)">本周</button>
+          <button class="qbtn" onclick="setPreset('overview','month',this)">本月</button>
+          <button class="qbtn" onclick="setPreset('overview','all',this)">全部</button>
+        </div>
+        <input type="date" class="f-date" id="ov-ds" onchange="onDateChange('overview')">
+        <span class="f-sep">至</span>
+        <input type="date" class="f-date" id="ov-de" onchange="onDateChange('overview')">
+        <div class="pf-div"></div>
+        <span class="pf-lbl">品牌：</span>
+        <select class="f-sel" id="ov-brand" onchange="renderOverview()">
+          <option value="">全部品牌</option>
+          <option value="逸品">逸品</option>
+          <option value="逸品孵化">逸品孵化</option>
+        </select>
+      </div>
+      <div class="stats" id="statsGrid"></div>
+      <div class="tbox">
+        <div class="tbox-head">
+          <span class="tbox-title">品牌汇总</span>
+          <span class="t-count" id="brandCnt">共 0 个品牌</span>
+        </div>
+        <div id="brandTable"><div class="empty"><div class="ei">📊</div><div class="et">加载中…</div></div></div>
+      </div>
+    </div>
+
+    <!-- 广告明细 -->
+    <div class="page" id="page-ads">
+      <div class="pf">
+        <span class="pf-lbl">打款时间：</span>
+        <div class="qbtn-g" id="ads-qbtns">
+          <button class="qbtn on" onclick="setPreset('ads','today',this)">今天</button>
+          <button class="qbtn" onclick="setPreset('ads','lastweek',this)">上周</button>
+          <button class="qbtn" onclick="setPreset('ads','week',this)">本周</button>
+          <button class="qbtn" onclick="setPreset('ads','month',this)">本月</button>
+          <button class="qbtn" onclick="setPreset('ads','all',this)">全部</button>
+        </div>
+        <input type="date" class="f-date" id="ads-ds" onchange="onDateChange('ads')">
+        <span class="f-sep">至</span>
+        <input type="date" class="f-date" id="ads-de" onchange="onDateChange('ads')">
+        <div class="pf-div"></div>
+        <span class="pf-lbl">品牌：</span>
+        <select class="f-sel" id="ads-brand" onchange="renderAds()">
+          <option value="">全部品牌</option>
+          <option value="逸品">逸品</option>
+          <option value="逸品孵化">逸品孵化</option>
+        </select>
+        <span class="pf-lbl">收款状态：</span>
+        <select class="f-sel" id="ads-st" onchange="renderAds()">
+          <option value="">全部状态</option>
+          <option>已收款</option>
+          <option>未收款</option>
+          <option>已下架</option>
+        </select>
+        <div class="pf-div"></div>
+        <span class="pf-lbl">到期时间：</span>
+        <select class="f-sel" id="ads-exp" onchange="renderAds()">
+          <option value="">全部</option>
+          <option value="today">今日到期</option>
+          <option value="3days">近3天到期</option>
+        </select>
+        <input class="search" id="adsQ" placeholder="搜索广告编号 / 商务 / 对接群…" oninput="renderAds()">
+      </div>
+      <div class="tbox">
+        <div class="tbox-head">
+          <span class="tbox-title">广告明细</span>
+          <span class="t-count" id="adsCnt"></span>
+        </div>
+        <div class="t-wrap">
+          <table class="dt">
+            <thead><tr>
+              <th>广告编号</th><th>品牌</th><th>商务花名</th>
+              <th>广告对接群</th><th>广告类型</th><th>广告模式</th><th>广告金额</th>
+              <th>收款状态</th><th>打款时间</th><th>到期时间</th><th>记录人</th>
+            </tr></thead>
+            <tbody id="adsTb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 审查台帐 -->
+    <div class="page" id="page-reviews">
+      <div class="pf">
+        <span class="pf-lbl">审查日期：</span>
+        <div class="qbtn-g" id="rv-qbtns">
+          <button class="qbtn on" onclick="setPreset('reviews','today',this)">今天</button>
+          <button class="qbtn" onclick="setPreset('reviews','lastweek',this)">上周</button>
+          <button class="qbtn" onclick="setPreset('reviews','week',this)">本周</button>
+          <button class="qbtn" onclick="setPreset('reviews','month',this)">本月</button>
+          <button class="qbtn" onclick="setPreset('reviews','all',this)">全部</button>
+        </div>
+        <input type="date" class="f-date" id="rv-ds" onchange="onDateChange('reviews')">
+        <span class="f-sep">至</span>
+        <input type="date" class="f-date" id="rv-de" onchange="onDateChange('reviews')">
+        <div class="pf-div"></div>
+        <span class="pf-lbl">品牌：</span>
+        <select class="f-sel" id="rv-brand" onchange="renderReviews()">
+          <option value="">全部品牌</option>
+          <option value="逸品">逸品</option>
+          <option value="逸品孵化">逸品孵化</option>
+        </select>
+        <span class="pf-lbl">问题记录：</span>
+        <select class="f-sel" id="rv-st" onchange="renderReviews()">
+          <option value="">全部</option>
+          <option value="有">有问题</option>
+          <option value="无">无问题</option>
+        </select>
+        <input class="search" id="rvQ" placeholder="搜索广告编号 / 审查对象…" oninput="renderReviews()">
+      </div>
+      <div class="tbox">
+        <div class="tbox-head">
+          <span class="tbox-title">审查台帐</span>
+          <span class="t-count" id="rvCnt"></span>
+        </div>
+        <div class="t-wrap">
+          <table class="dt">
+            <thead><tr>
+              <th>审查日期</th><th>品牌</th><th>审查对象</th><th>审查人</th>
+              <th>广告编号</th><th>审查场景</th><th>审查方式</th>
+              <th>发现问题</th><th>风险等级</th><th>是否整改</th><th>是否闭环</th>
+            </tr></thead>
+            <tbody id="rvTb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 关键词监控 -->
+    <div class="page" id="page-keywords">
+      <div class="pf">
+        <span class="pf-lbl">登记时间：</span>
+        <div class="qbtn-g" id="kw-qbtns">
+          <button class="qbtn on" onclick="setPreset('keywords','today',this)">今天</button>
+          <button class="qbtn" onclick="setPreset('keywords','lastweek',this)">上周</button>
+          <button class="qbtn" onclick="setPreset('keywords','week',this)">本周</button>
+          <button class="qbtn" onclick="setPreset('keywords','month',this)">本月</button>
+          <button class="qbtn" onclick="setPreset('keywords','all',this)">全部</button>
+        </div>
+        <input type="date" class="f-date" id="kw-ds" onchange="onDateChange('keywords')">
+        <span class="f-sep">至</span>
+        <input type="date" class="f-date" id="kw-de" onchange="onDateChange('keywords')">
+        <div class="pf-div"></div>
+        <span class="pf-lbl">品牌：</span>
+        <select class="f-sel" id="kw-brand" onchange="renderKw()">
+          <option value="">全部品牌</option>
+          <option value="逸品">逸品</option>
+          <option value="逸品孵化">逸品孵化</option>
+        </select>
+        <span class="pf-lbl">处理状态：</span>
+        <select class="f-sel" id="kw-st" onchange="renderKw()">
+          <option value="">全部</option>
+          <option value="已完成">已完成</option>
+          <option value="pending">待处理</option>
+        </select>
+        <input class="search" id="kwQ" placeholder="搜索关键词 / 来源群…" oninput="renderKw()">
+      </div>
+      <div class="tbox">
+        <div class="tbox-head">
+          <span class="tbox-title">关键词监控</span>
+          <span class="t-count" id="kwCnt"></span>
+        </div>
+        <div class="t-wrap">
+          <table class="dt">
+            <thead><tr>
+              <th>编号</th><th>品牌</th><th>来源群</th><th>发送人</th><th>命中关键词</th>
+              <th>消息内容</th><th>登记时间</th><th>问题描述</th>
+              <th>处理状态</th><th>审查人员</th>
+            </tr></thead>
+            <tbody id="kwTb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 任务清单 -->
+    <div class="page" id="page-tasks">
+      <div class="pf">
+        <select class="f-sel" id="task-reviewer" onchange="renderTasks()">
+          <option value="">全部审查人员</option>
+          <option value="罗军">罗军</option>
+        </select>
+        <select class="f-sel" id="task-st" onchange="renderTasks()">
+          <option value="">全部状态</option>
+          <option value="进行中">进行中</option>
+          <option value="已完成">已完成</option>
+          <option value="尚未开始">尚未开始</option>
+          <option value="已暂停">已暂停</option>
+        </select>
+        <span class="t-count" id="taskCnt"></span>
+      </div>
+      <div class="t-wrap">
+        <table class="dt">
+          <thead><tr>
+            <th>任务列表</th><th>优先级</th><th>审查人员</th><th>状态</th>
+            <th>当前进度</th><th>开始时间</th><th>结束时间</th><th>里程碑</th><th>备注</th>
+          </tr></thead>
+          <tbody id="taskTb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI成效 -->
+    <div class="page" id="page-ai">
+      <div class="pf">
+        <select class="f-sel" id="ai-reviewer" onchange="renderAi()">
+          <option value="">全部审查人员</option>
+          <option value="罗军">罗军</option>
+        </select>
+        <select class="f-sel" id="ai-st" onchange="renderAi()">
+          <option value="">全部状态</option>
+          <option value="已上线">已上线</option>
+          <option value="试运行">试运行</option>
+        </select>
+        <span class="t-count" id="aiCnt"></span>
+      </div>
+      <div class="t-wrap">
+        <table class="dt">
+          <thead><tr>
+            <th>工作流编号</th><th>工作流名称</th><th>一句话说明</th><th>审查人员</th>
+            <th>输入</th><th>输出</th><th>步骤摘要</th><th>工具/Agent/模型</th>
+            <th>触发方式</th><th>运行频率</th><th>预计节约工时</th><th>状态</th><th>备注</th>
+          </tr></thead>
+          <tbody id="aiTb"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// 日出日落算法（北京 116.4°E, 39.9°N）
+// ══════════════════════════════════════════════════════
+const BJ_LAT = 39.9, BJ_LNG = 116.4, BJ_TZ = 8;
+
+function calcSunTimes(date){
+  const rad = Math.PI / 180;
+  const n = Math.floor((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) - Math.floor(Date.UTC(2000,0,1)/86400000) + 1.5);
+  const L = (280.460 + 0.9856474 * n) % 360;
+  const g = (357.528 + 0.9856003 * n) % 360;
+  const lambda = L + 1.915 * Math.sin(g * rad) + 0.020 * Math.sin(2 * g * rad);
+  const epsilon = 23.439 - 0.0000004 * n;
+  const sinDec = Math.sin(epsilon * rad) * Math.sin(lambda * rad);
+  const dec = Math.asin(sinDec);
+  const cosH = (Math.cos(90.833 * rad) - Math.sin(BJ_LAT * rad) * sinDec) / (Math.cos(BJ_LAT * rad) * Math.cos(dec));
+  if(cosH < -1) return {rise: 0, set: 24*60};
+  if(cosH >  1) return {rise: 12*60, set: 12*60};
+  const H = Math.acos(cosH) / rad;
+  const EqT = (-1.915 * Math.sin(g * rad) - 0.020 * Math.sin(2 * g * rad) + 2.466 * Math.sin(2 * lambda * rad) - 0.053 * Math.sin(4 * lambda * rad));
+  const transit = 12 + (0 - BJ_LNG) / 15 - EqT / 60 + BJ_TZ;
+  return {
+    rise: Math.round((transit - H / 15) * 60),
+    set:  Math.round((transit + H / 15) * 60)
+  };
+}
+
+function minToHHMM(m){
+  return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+}
+
+// ══════════════════════════════════════════════════════
+// 主题系统
+// ══════════════════════════════════════════════════════
+let manualOverride = false;
+let lastAutoDate = '';
+
+function isDay(){
+  const now = new Date();
+  const bjNow = new Date(now.getTime() + (BJ_TZ * 60 - now.getTimezoneOffset()) * 60000);
+  const sun = calcSunTimes(bjNow);
+  const nowMin = bjNow.getHours() * 60 + bjNow.getMinutes();
+  return nowMin >= sun.rise && nowMin < sun.set;
+}
+
+function applyTheme(day, silent){
+  const body = document.body;
+  if(day){
+    body.classList.add('day');
+    document.getElementById('themeIcon').textContent = '☀️';
+    document.getElementById('themeLabel').textContent = '白天';
+  } else {
+    body.classList.remove('day');
+    document.getElementById('themeIcon').textContent = '🌙';
+    document.getElementById('themeLabel').textContent = '夜览';
+  }
+  if(!silent) toast(day ? '已切换为白天模式 ☀️' : '已切换为夜览模式 🌙');
+}
+
+function toggleTheme(){
+  manualOverride = true;
+  applyTheme(!document.body.classList.contains('day'), false);
+}
+
+function updateSunInfo(){
+  const now = new Date();
+  const bjNow = new Date(now.getTime() + (BJ_TZ * 60 - now.getTimezoneOffset()) * 60000);
+  const sun = calcSunTimes(bjNow);
+  const el = document.getElementById('sunInfo');
+  if(el) el.textContent = `🌅 ${minToHHMM(sun.rise)}  🌇 ${minToHHMM(sun.set)}`;
+}
+
+function autoThemeCheck(){
+  const now = new Date();
+  const bjNow = new Date(now.getTime() + (BJ_TZ * 60 - now.getTimezoneOffset()) * 60000);
+  const todayStr = bjNow.toDateString();
+  if(todayStr !== lastAutoDate){ lastAutoDate = todayStr; manualOverride = false; }
+  if(!manualOverride){
+    const sun = calcSunTimes(bjNow);
+    const nowMin = bjNow.getHours() * 60 + bjNow.getMinutes();
+    const shouldBeDay = nowMin >= sun.rise && nowMin < sun.set;
+    if(shouldBeDay !== document.body.classList.contains('day')) applyTheme(shouldBeDay, false);
+  }
+  updateSunInfo();
+}
+
+// ══════════════════════════════════════════════════════
+// 状态 & 工具函数
+// ══════════════════════════════════════════════════════
+const EMPTY = { updated_at:'', sheet_count:0, ads:[], reviews:[], keywords:[], tasks:[], ai_items:[] };
+let D = null, page = 'overview';
+const PF = {
+  overview:{s:null,e:null,preset:'today'},
+  ads:     {s:null,e:null,preset:'today'},
+  reviews: {s:null,e:null,preset:'today'},
+  keywords:{s:null,e:null,preset:'today'},
+};
+
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const f   = (v,d='-') => (v && String(v).trim()) ? String(v).trim() : d;
+const num = s => parseFloat(String(s||'').replace(/,/g,'')) || 0;
+
+function parseDate(s){
+  if(!s) return null;
+  const str = String(s).trim();
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  m = str.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  m = str.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  return null;
+}
+function today0(){ const t=new Date(); return new Date(t.getFullYear(),t.getMonth(),t.getDate()); }
+
+function calcPresetRange(preset){
+  const t = today0();
+  if(preset==='today') return {s:t, e:new Date(t.getFullYear(),t.getMonth(),t.getDate(),23,59,59)};
+  if(preset==='lastweek'){
+    const wd=t.getDay()||7, tm=new Date(t.getTime()-(wd-1)*864e5), lm=new Date(tm.getTime()-7*864e5);
+    return {s:lm, e:new Date(tm.getTime()-1000)};
+  }
+  if(preset==='week'){
+    const wd=t.getDay()||7;
+    return {s:new Date(t.getTime()-(wd-1)*864e5), e:new Date(t.getTime()+(7-wd)*864e5+86399000)};
+  }
+  if(preset==='month') return {s:new Date(t.getFullYear(),t.getMonth(),1), e:new Date(t.getFullYear(),t.getMonth()+1,0,23,59,59)};
+  return {s:null, e:null};
+}
+function initPresets(){
+  ['overview','ads','reviews','keywords'].forEach(pg=>{const r=calcPresetRange(PF[pg].preset);PF[pg].s=r.s;PF[pg].e=r.e;});
+}
+function inRange(pg, dateStr){
+  const dr = PF[pg];
+  if(!dr || dr.preset==='all' || (!dr.s && !dr.e)) return true;
+  const d = parseDate(dateStr); if(!d) return dr.preset==='all';
+  const dv = d.getFullYear()*10000+d.getMonth()*100+d.getDate();
+  const sv = dr.s ? dr.s.getFullYear()*10000+dr.s.getMonth()*100+dr.s.getDate() : null;
+  const ev = dr.e ? dr.e.getFullYear()*10000+dr.e.getMonth()*100+dr.e.getDate() : null;
+  if(sv && dv < sv) return false; if(ev && dv > ev) return false; return true;
+}
+function setPreset(pg, preset, btn){
+  const pfx = pg==='overview'?'ov':pg==='ads'?'ads':pg==='reviews'?'rv':'kw';
+  const dsEl=document.getElementById(pfx+'-ds'), deEl=document.getElementById(pfx+'-de');
+  if(dsEl) dsEl.value=''; if(deEl) deEl.value='';
+  document.querySelectorAll(`#${pfx}-qbtns .qbtn`).forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); PF[pg].preset=preset;
+  const r=calcPresetRange(preset); PF[pg].s=r.s; PF[pg].e=r.e;
+  renderPage(pg);
+}
+function onDateChange(pg){
+  const pfx = pg==='overview'?'ov':pg==='ads'?'ads':pg==='reviews'?'rv':'kw';
+  const ds=document.getElementById(pfx+'-ds')?.value, de=document.getElementById(pfx+'-de')?.value;
+  document.querySelectorAll(`#${pfx}-qbtns .qbtn`).forEach(b=>b.classList.remove('on'));
+  PF[pg].s=ds?parseDate(ds):null; PF[pg].e=de?new Date(de+'T23:59:59'):null; PF[pg].preset='custom';
+  renderPage(pg);
+}
+function getBrand(pg){ const pfx=pg==='overview'?'ov':pg==='ads'?'ads':'rv'; return document.getElementById(pfx+'-brand')?.value||''; }
+
+const b = (txt,cls) => `<span class="b ${cls}">${esc(txt)}</span>`;
+function bPay(s){ if(!s) return b('未知','b-gr'); if(s.includes('已收款')) return b(s,'b-g'); if(s.includes('下架')) return b(s,'b-gr'); return b(s,'b-y'); }
+function bRisk(r){ if(r==='高') return b('高','b-r'); if(r==='中') return b('中','b-y'); if(r==='低') return b('低','b-g'); return r?b(r,'b-gr'):'-'; }
+function bIssue(s){ return s==='有'?b('有','b-r'):s==='无'?b('无','b-g'):b(s||'-','b-gr'); }
+function bYN(s){ return s==='是'?b('是','b-g'):s==='否'?b('否','b-r'):b(s||'-','b-gr'); }
+function bKw(s){ return s==='已完成'?b('已完成','b-g'):b(s||'待处理','b-y'); }
+function bPriority(s){ if(s==='高'||s==='P0') return b(s,'b-r'); if(s==='中'||s==='P1') return b(s,'b-y'); if(s==='低'||s==='P2') return b(s,'b-g'); return s?b(s,'b-gr'):'-'; }
+function bTaskStatus(s){ if(s==='已完成') return b('已完成','b-g'); if(s==='进行中') return b('进行中','b-bl'); if(s==='已暂停') return b('已暂停','b-gr'); return s?b(s,'b-y'):b('待开始','b-y'); }
+function bAiStatus(s){ if(s==='运行中'||s==='已上线') return b(s,'b-g'); if(s==='已完成') return b('已完成','b-bl'); if(s==='测试中'||s==='试运行') return b(s,'b-y'); if(s==='已暂停') return b('已暂停','b-gr'); return s?b(s,'b-gr'):'-'; }
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = '✅ ' + msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove('show'), 2800);
+}
+function emptyRow(cols,icon,msg){ return `<tr><td colspan="${cols}"><div class="empty"><div class="ei">${icon}</div><div class="et">${msg}</div></div></td></tr>`; }
+
+function nav(el){
+  page = el.dataset.page;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on')); el.classList.add('on');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('page-'+page)?.classList.add('on');
+  renderPage(page);
+}
+function renderPage(pg){
+  if(!D) return;
+  if(pg==='overview') renderOverview();
+  else if(pg==='ads') renderAds();
+  else if(pg==='reviews') renderReviews();
+  else if(pg==='keywords') renderKw();
+  else if(pg==='tasks') renderTasks();
+  else if(pg==='ai') renderAi();
+}
+function render(){ renderPage(page); }
+
+// ══════════════════════════════════════════════════════
+// 渲染函数（与原版完全一致）
+// ══════════════════════════════════════════════════════
+
+function renderOverview(){
+  const br = getBrand('overview');
+  const adsWithGroup = D.ads.filter(a=>{ if(!(a.new_group||a.old_group)) return false; if(br&&a.brand!==br) return false; return inRange('overview',a.pay_time); });
+  const total = adsWithGroup.filter(a=>(a.pay_status||'').includes('已收款')).reduce((s,a)=>s+num(a.amount),0);
+  const rvs = D.reviews.filter(r=>{ if(br&&r.brand!==br) return false; return inRange('overview',r.date); });
+  const kws = D.keywords.filter(k=>{ if(br&&k.brand!==br) return false; return inRange('overview',k.log_time); });
+  const expiredAds = D.ads.filter(a=>{ if(!(a.new_group||a.old_group)) return false; if(br&&a.brand!==br) return false; return inRange('overview',a.expire_time); }).length;
+  const reviewTotal = rvs.length + kws.length;
+  const issues = rvs.filter(r=>r.has_issue==='有').length + kws.filter(k=>k.status==='跟进中').length;
+  const kwPend = kws.filter(k=>!k.status||k.status==='跟进中').length;
+  document.getElementById('statsGrid').innerHTML = [
+    ['广告数',adsWithGroup.length,''],['收款金额',total.toLocaleString(),''],
+    ['广告到期',expiredAds,expiredAds>0?'warn':''],['审查记录',reviewTotal,''],
+    ['发现问题',issues,issues>0?'warn':'ok'],['关键词待处理',kwPend,kwPend>0?'warn':''],
+  ].map(([l,v,c])=>`<div class="scard ${c}"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
+  const brandSet = [...new Set(adsWithGroup.map(a=>a.brand))].filter(Boolean).sort();
+  document.getElementById('brandCnt').textContent = `共 ${brandSet.length} 个品牌`;
+  if(!brandSet.length){ document.getElementById('brandTable').innerHTML='<div class="empty"><div class="ei">📊</div><div class="et">暂无数据</div></div>'; return; }
+  const rows = brandSet.map(brand=>{
+    const brGrp = adsWithGroup.filter(a=>a.brand===brand);
+    const amt = brGrp.filter(a=>(a.pay_status||'').includes('已收款')).reduce((s,a)=>s+num(a.amount),0);
+    const brv = rvs.filter(r=>r.brand===brand), brk = kws.filter(k=>k.brand===brand);
+    const reviewCnt = brv.length + brk.length;
+    const iss = brv.filter(r=>r.has_issue==='有').length + brk.filter(k=>k.status==='跟进中').length;
+    return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${brGrp.length}</td><td style="color:var(--accent);font-weight:600">${amt.toLocaleString()}</td><td>${reviewCnt}</td><td>${iss>0?b(iss+'个','b-r'):b('无','b-g')}</td></tr>`;
+  }).join('');
+  document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>广告数</th><th>收款金额</th><th>审查次数</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderAds(){
+  if(!D) return;
+  const br=getBrand('ads'), st=document.getElementById('ads-st')?.value||'';
+  const exp=document.getElementById('ads-exp')?.value||'';
+  const q=(document.getElementById('adsQ')?.value||'').toLowerCase();
+  const t0=today0(), t3=new Date(t0.getTime()+3*864e5);
+  let rows=D.ads.filter(item=>{
+    if(!(item.new_group||item.old_group)) return false;
+    if(br&&item.brand!==br) return false;
+    if(!inRange('ads',item.pay_time)) return false;
+    if(exp==='today'){ const d=parseDate(item.expire_time); if(!d) return false; const dv=d.getFullYear()*10000+d.getMonth()*100+d.getDate(),tv=t0.getFullYear()*10000+t0.getMonth()*100+t0.getDate(); return dv===tv; }
+    if(exp==='3days'){ const d=parseDate(item.expire_time); if(!d) return false; return d>=t0&&d<=t3; }
+    return true;
+  });
+  if(st) rows=rows.filter(r=>(r.pay_status||'').includes(st));
+  if(q) rows=rows.filter(r=>(r.ad_no+r.biz_name+r.new_group+r.old_group).toLowerCase().includes(q));
+  function expireTag(dateStr){
+    const d=parseDate(dateStr); if(!d) return esc(f(dateStr));
+    const dv=d.getFullYear()*10000+d.getMonth()*100+d.getDate();
+    const tv=t0.getFullYear()*10000+t0.getMonth()*100+t0.getDate();
+    const t3v=t3.getFullYear()*10000+t3.getMonth()*100+t3.getDate();
+    if(dv===tv) return `<span style="color:#ef4444;font-weight:600">${esc(dateStr)}</span>`;
+    if(dv>tv&&dv<=t3v) return `<span style="color:#f59e0b;font-weight:600">${esc(dateStr)}</span>`;
+    return esc(f(dateStr));
+  }
+  document.getElementById('adsCnt').textContent = `共 ${rows.length} 条`;
+  document.getElementById('adsTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+    <td><code class="adno">${esc(r.ad_no)}</code></td>
+    <td><span class="brand">${esc(r.brand)}</span></td>
+    <td>${esc(f(r.biz_name))}</td>
+    <td title="${esc(r.old_group)}">${esc(f(r.new_group))}</td>
+    <td>${esc(f(r.ad_type))}</td><td>${esc(f(r.ad_mode))}</td>
+    <td style="color:var(--accent);font-weight:600">${esc(f(r.amount))}</td>
+    <td>${bPay(r.pay_status)}</td><td>${esc(f(r.pay_time))}</td>
+    <td>${expireTag(r.expire_time)}</td><td>${esc(f(r.recorder))}</td>
+  </tr>`).join('') : emptyRow(11,'📋','暂无符合条件的广告数据');
+}
+
+function renderReviews(){
+  if(!D) return;
+  const br=getBrand('reviews'), st=document.getElementById('rv-st')?.value||'';
+  const q=(document.getElementById('rvQ')?.value||'').toLowerCase();
+  let rows=D.reviews.filter(r=>{ if(br&&r.brand!==br) return false; return inRange('reviews',r.date); });
+  if(st) rows=rows.filter(r=>r.has_issue===st);
+  if(q) rows=rows.filter(r=>(r.ad_no+r.target+r.reviewer+(r.issue_desc||'')).toLowerCase().includes(q));
+  document.getElementById('rvCnt').textContent = `共 ${rows.length} 条`;
+  document.getElementById('rvTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+    <td>${esc(f(r.date))}</td><td><span class="brand">${esc(r.brand)}</span></td>
+    <td>${esc(f(r.target))}</td><td>${esc(f(r.reviewer))}</td>
+    <td><code class="adno">${esc(f(r.ad_no))}</code></td>
+    <td>${esc(f(r.scene))}</td><td>${esc(f(r.method))}</td>
+    <td>${bIssue(r.has_issue)}</td><td>${bRisk(r.risk_level)}</td>
+    <td>${bYN(r.is_fixed)}</td><td>${bYN(r.is_closed)}</td>
+  </tr>`).join('') : emptyRow(11,'🔍','暂无符合条件的审查记录');
+}
+
+function renderKw(){
+  if(!D) return;
+  const br=document.getElementById('kw-brand')?.value||'';
+  const st=document.getElementById('kw-st')?.value||'';
+  const q=(document.getElementById('kwQ')?.value||'').toLowerCase();
+  let rows=D.keywords.filter(k=>{ if(br&&k.brand!==br) return false; return inRange('keywords',k.log_time); });
+  if(st==='已完成') rows=rows.filter(r=>r.status==='已完成'||r.status==='无异常');
+  else if(st==='pending') rows=rows.filter(r=>!r.status||r.status==='跟进中');
+  if(q) rows=rows.filter(r=>(r.keyword+r.source+r.sender+r.content+r.brand).toLowerCase().includes(q));
+  document.getElementById('kwCnt').textContent = `共 ${rows.length} 条`;
+  document.getElementById('kwTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+    <td>${esc(f(r.no))}</td>
+    <td>${r.brand?`<span class="brand">${esc(r.brand)}</span>`:'-'}</td>
+    <td>${esc(f(r.source))}</td><td>${esc(f(r.sender))}</td>
+    <td>${r.keyword?b(r.keyword,'b-y'):'-'}</td>
+    <td class="wrap" style="font-size:11px;color:var(--text-secondary)">${esc(f(r.content))}</td>
+    <td style="white-space:nowrap">${esc(f(r.log_time))}</td>
+    <td title="${esc(r.issue_desc)}">${esc(f(r.issue_desc))}</td>
+    <td>${bKw(r.status)}</td><td>${esc(f(r.reviewer))}</td>
+  </tr>`).join('') : emptyRow(10,'🔑','暂无符合条件的监控记录');
+}
+
+function renderTasks(){
+  if(!D||!D.tasks) return;
+  const rv=document.getElementById('task-reviewer')?.value||'';
+  const st=document.getElementById('task-st')?.value||'';
+  let rows=D.tasks.filter(t=>{ if(rv&&t.reviewer!==rv) return false; if(st&&t.status!==st) return false; return true; });
+  document.getElementById('taskCnt').textContent = `共 ${rows.length} 条`;
+  document.getElementById('taskTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+    <td style="max-width:200px;white-space:normal">${esc(f(r.task_name))}</td>
+    <td>${bPriority(r.priority)}</td><td>${esc(f(r.reviewer))}</td>
+    <td>${bTaskStatus(r.status)}</td>
+    <td style="max-width:150px;white-space:normal;font-size:12px;color:var(--text-secondary)">${esc(f(r.progress))}</td>
+    <td style="white-space:nowrap">${esc(f(r.start_time))}</td>
+    <td style="white-space:nowrap">${esc(f(r.end_time))}</td>
+    <td style="max-width:120px;white-space:normal;font-size:12px">${esc(f(r.milestone))}</td>
+    <td style="max-width:150px;white-space:normal;font-size:11px;color:var(--text-secondary)">${esc(f(r.remark))}</td>
+  </tr>`).join('') : emptyRow(9,'✅','暂无符合条件的任务');
+}
+
+function renderAi(){
+  if(!D||!D.ai_items) return;
+  const rv=document.getElementById('ai-reviewer')?.value||'';
+  const st=document.getElementById('ai-st')?.value||'';
+  let rows=D.ai_items.filter(a=>{ if(rv&&a.reviewer!==rv) return false; if(st&&a.status!==st) return false; return true; });
+  document.getElementById('aiCnt').textContent = `共 ${rows.length} 条`;
+  document.getElementById('aiTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+    <td style="white-space:nowrap">${esc(f(r.flow_no))}</td>
+    <td style="max-width:140px;white-space:normal;font-weight:600">${esc(f(r.flow_name))}</td>
+    <td style="max-width:180px;white-space:normal;font-size:12px;color:var(--text-secondary)">${esc(f(r.summary))}</td>
+    <td>${esc(f(r.reviewer))}</td>
+    <td style="max-width:120px;white-space:normal;font-size:11px">${esc(f(r.input))}</td>
+    <td style="max-width:120px;white-space:normal;font-size:11px">${esc(f(r.output))}</td>
+    <td style="max-width:160px;white-space:normal;font-size:11px;color:var(--text-secondary)">${esc(f(r.steps))}</td>
+    <td style="max-width:140px;white-space:normal;font-size:11px">${esc(f(r.tools))}</td>
+    <td>${esc(f(r.trigger))}</td><td>${esc(f(r.frequency))}</td>
+    <td style="text-align:center">${esc(f(r.save_time))}</td>
+    <td>${bAiStatus(r.status)}</td>
+    <td style="max-width:150px;white-space:normal;font-size:11px;color:var(--text-secondary)">${esc(f(r.remark))}</td>
+  </tr>`).join('') : emptyRow(13,'🤖','暂无符合条件的AI成效记录');
+}
+
+function initData(data, animated){
+  D = data;
+  const withGrp = data.ads.filter(a=>a.new_group||a.old_group).length;
+  document.getElementById('cnt-ads').textContent = withGrp;
+  document.getElementById('cnt-reviews').textContent = data.reviews.length;
+  document.getElementById('cnt-kw').textContent = data.keywords.length;
+  document.getElementById('cnt-tasks').textContent = (data.tasks||[]).length;
+  document.getElementById('cnt-ai').textContent = (data.ai_items||[]).length;
+  document.getElementById('utime').textContent = data.updated_at || '';
+  if(animated) toast('数据已同步更新');
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+// API 调用
+// ══════════════════════════════════════════════════════
+
+async function loadFromApi(endpoint, animated){
+  try {
+    const res = await fetch(endpoint);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if(!data.success) throw new Error(data.error || '接口返回错误');
+    initData(data, animated);
+    document.getElementById('ldot').classList.add('on');
+    document.getElementById('ltext').textContent = `谷歌表格 · ${data.sheet_count||0}张工作表`;
+  } catch(e) {
+    document.getElementById('ldot').classList.remove('on');
+    document.getElementById('ltext').textContent = '同步失败';
+    if(animated) toast('⚠ 同步失败：' + e.message);
+  }
+}
+
+async function manualRefresh(){
+  const btn=document.getElementById('refreshBtn'), icon=document.getElementById('refreshIcon'), txt=document.getElementById('refreshTxt');
+  btn.disabled=true; icon.textContent='⏳'; txt.textContent='同步中…';
+  document.getElementById('ltext').textContent = '同步中…';
+  await loadFromApi('/api/refresh', true);
+  btn.disabled=false; icon.textContent='🔄'; txt.textContent='同步数据';
+}
+
+// ── 启动 ──────────────────────────────────────────────
+initPresets();
+applyTheme(isDay(), true);
+updateSunInfo();
+setInterval(autoThemeCheck, 60000);
+initData(EMPTY, false);
+loadFromApi('/api/all', false);
+</script>
+</body></html>
