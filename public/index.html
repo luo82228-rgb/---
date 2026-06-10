@@ -1282,15 +1282,16 @@ function renderOverview(){
   const total = adsWithGroup.filter(isPaid).reduce((s,a)=>s+num(a.amount),0);
   const rvs = D.reviews.filter(r=>{ if(br&&r.brand!==br) return false; return inRange('overview',r.date); });
   const kws = D.keywords.filter(k=>{ if(br&&k.brand!==br) return false; return inRange('overview',k.log_time); });
-  const expiredAds = D.ads.filter(a=>{ if(!(a.group)) return false; if(br&&a.brand!==br) return false; return inRange('overview',a.expire_time); }).length;
+  const _ovTv=(()=>{const t=today0();return t.getFullYear()*10000+t.getMonth()*100+t.getDate();})();
+  const expiredAds = D.ads.filter(a=>{ if(!(a.group)) return false; if((a.pay_status||'').includes('已下架')) return false; if(br&&a.brand!==br) return false; const d=parseDate(a.expire_time); return d&&d.getFullYear()*10000+d.getMonth()*100+d.getDate()===_ovTv; }).length;  // 「广告到期」=今日到期+排除已下架，对齐今日关注（2026-06-10；固定今天，不随总览日期范围）
   const reviewTotal = rvs.length + kws.length;
   const issues = rvs.filter(r=>r.has_issue==='有').length + kws.filter(kwIsRisk).length;
   const kwPend = kws.filter(kwIsEmpty).length;  // 业务总览「关键词待处理」= 状态空白的数量（2026-06-10 用户改；与监控页/日报「待处理=处理中/其他」不同口径）
   document.getElementById('statsGrid').innerHTML = [
-    ['收款广告数',adsWithGroup.length,'','ads'],['收款金额',total.toLocaleString(),'',''],
-    ['广告到期',expiredAds,expiredAds>0?'warn':'',''],['检查总量',reviewTotal,'',''],
+    ['收款广告数',adsWithGroup.length,'','ads'],['收款金额',total.toLocaleString(),'','ads'],
+    ['广告到期',expiredAds,expiredAds>0?'warn':'','expire'],['检查总量',reviewTotal,'','check'],
     ['审查台账',rvs.length,'','rvs'],['关键词',kws.length,'','kws'],
-    ['发现问题',issues,issues>0?'warn':'ok','issues'],['关键词待处理',kwPend,kwPend>0?'warn':'',''],
+    ['发现问题',issues,issues>0?'warn':'ok','issues'],['关键词待处理',kwPend,kwPend>0?'warn':'','kwpend'],
   ].map(([l,v,c,k])=>`<div class="scard ${c}" onclick="openCardModal('${k}','${l}')" style="cursor:pointer"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
   const allBrandAds = D.ads.filter(a=>{ if(!(a.group)) return false; if(br&&a.brand!==br) return false; return true; });
   const brandSet = [...new Set(allBrandAds.map(a=>a.brand))].filter(Boolean).sort();
@@ -1388,6 +1389,21 @@ function buildOvDetail(key,brand){
   if(key==='kws'){
     const list=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('overview',k.log_time));
     return head('关键词监控 '+list.length+' 条')+tbl(kwCols,list.map(kwRow));
+  }
+  if(key==='expire'){
+    const list=D.ads.filter(a=>a.group&&!(a.pay_status||'').includes('已下架')&&(!brand||a.brand===brand)&&(()=>{const d=parseDate(a.expire_time);return d&&d.getFullYear()*10000+d.getMonth()*100+d.getDate()===tv;})());
+    return head('今日到期广告 '+list.length+' 条')+tbl(adsCols,list.map(adsRow));
+  }
+  if(key==='check'){
+    const rl=D.reviews.filter(r=>(!brand||r.brand===brand)&&inRange('overview',r.date));
+    const kl=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('overview',k.log_time));
+    return head('检查总量 '+(rl.length+kl.length)+' 条')
+      +`<div class="ovd-sub">审查台帐 · ${rl.length} 条</div>`+tbl(rvCols,rl.map(rvRow))
+      +`<div class="ovd-sub">关键词 · ${kl.length} 条</div>`+tbl(kwCols,kl.map(kwRow));
+  }
+  if(key==='kwpend'){
+    const list=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('overview',k.log_time)&&kwIsEmpty(k));
+    return head('关键词待处理（状态空白） '+list.length+' 条')+tbl(kwCols,list.map(kwRow));
   }
   // 发现问题 = 审查问题项 + 关键词风险项；各自沿用对应页面的列
   const rvI=D.reviews.filter(r=>(!brand||r.brand===brand)&&inRange('overview',r.date)&&r.has_issue==='有');
