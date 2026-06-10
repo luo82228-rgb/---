@@ -1,7 +1,11 @@
 import { fetchAllData } from './sheets';
+import { handleLogin, handleLogout, loginPage, verifyTicket, verifySession, Role } from './auth';
 
 interface Env {
   ASSETS: Fetcher;
+  DASH_PASSWORD?: string;
+  DASH_PASSWORD_ADVANCED?: string;
+  DASH_PASSWORD_VIEWER?: string;
 }
 
 const CACHE_KEY = 'https://cache.yipin-internal/api/data/v1';
@@ -9,7 +13,35 @@ const CACHE_TTL = 60;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const { pathname } = new URL(request.url);
+    const url = new URL(request.url);
+    const { pathname } = url;
+
+    // 登录页背景图和登录流程本身不需要鉴权
+    if (pathname === '/fuchun-tile.jpg') return env.ASSETS.fetch(request);
+    if (pathname === '/login') {
+      // GET 永远给登录页（不看 Cookie）——每次打开/刷新看板都必须重新输密码
+      return request.method === 'POST' ? handleLogin(request, env) : loginPage();
+    }
+    if (pathname === '/logout') return handleLogout();
+
+    // 看板页只认 60 秒一次性门票（登录跳转带来），页面加载后会抹掉地址栏里的门票，
+    // 所以刷新/重开必然回到登录页
+    if (pathname === '/' || pathname === '/index.html') {
+      const role = await verifyTicket(env, url.searchParams.get('t'));
+      if (!role) return Response.redirect(`${url.origin}/login`, 302);
+      return serveDashboard(url.origin, env, role);
+    }
+
+    // 其余路径（/api/* 等）认 12 小时会话 Cookie，保证开着的看板数据轮询不断
+    if (!(await verifySession(request, env))) {
+      if (pathname.startsWith('/api/')) {
+        return new Response(JSON.stringify({ success: false, error: 'unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        });
+      }
+      return Response.redirect(`${url.origin}/login`, 302);
+    }
 
     if (pathname === '/api/all') {
       const cache = caches.default;
@@ -45,6 +77,17 @@ export default {
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
+
+async function serveDashboard(origin: string, env: Env, role: Role): Promise<Response> {
+  const res = await env.ASSETS.fetch(new Request(`${origin}/`));
+  let html = await res.text();
+  // 注入身份（window.YP_ROLE，前端按身份分权用），并立刻抹掉地址栏里的一次性门票
+  html = html.replace(
+    '</head>',
+    `<script>window.YP_ROLE=${JSON.stringify(role)};history.replaceState(null,'',location.pathname)</script></head>`
+  );
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
 
 async function buildAndCache(cache: Cache): Promise<Response> {
   try {
