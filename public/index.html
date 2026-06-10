@@ -1441,9 +1441,9 @@ function reportRangeLabel(){
 }
 // 关键词口径（与「关键词监控」页规则#11 共用，唯一来源，勿各页各写）：
 // 已处理/已闭环 = 处理状态「已完成」；待处理/未处理 = 处理状态「处理中/其他」；风险项/发现问题 = 待处理 + 已处理（三种状态合计）
-const kwIsDone=k=>k.status==='已完成';
-const kwIsPending=k=>k.status==='处理中'||k.status==='其他';
-const kwIsRisk=k=>kwIsPending(k)||kwIsDone(k);
+const kwIsDone=k=>k.status==='已完成'||k.status==='无异常';   // 已处理/已闭环：含「无异常」（2026-06-10 改）
+const kwIsPending=k=>k.status==='处理中'||k.status==='其他';   // 待处理
+const kwIsRisk=k=>k.status==='已完成'||kwIsPending(k);         // 风险项/发现问题 = 真问题（已完成+待处理），不含无异常
 function reportStat(brand){
   const rvs=D.reviews.filter(r=>(!brand||r.brand===brand)&&inRange('report',r.date));
   const kws=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('report',k.log_time));
@@ -1459,8 +1459,8 @@ function reportStat(brand){
 function reportFull(pred){
   const rvs=D.reviews.filter(r=>pred(r.brand)&&inRange('report',r.date));
   const kws=D.keywords.filter(k=>pred(k.brand)&&inRange('report',k.log_time));
-  const kwFollow=kws.filter(kwIsRisk).length;                       // 发现问题 = 风险项 = 待处理+已处理
-  const kwDone=kws.filter(k=>kwIsDone(k)||k.status==='无异常').length; // 已处理/已闭环 = 状态「已完成」+「无异常」（日报专属：用户要求无异常也算已处理/已闭环；监控页已处理卡不含无异常）
+  const kwFollow=kws.filter(kwIsRisk).length;                       // 发现问题 = 风险项 = 真问题（已完成+待处理），不含无异常
+  const kwDone=kws.filter(kwIsDone).length;                         // 已处理/已闭环 = 状态「已完成」+「无异常」（已抽到 kwIsDone，全站一致）
   const kwUndone=kws.filter(kwIsPending).length;                    // 未处理/待处理 = 状态「处理中/其他」
   const rvIssue=rvs.filter(r=>r.has_issue==='有').length;                          // 发现问题
   const rvClosed=rvs.filter(r=>r.has_issue==='有'&&r.is_closed==='是').length;     // 已闭环
