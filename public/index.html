@@ -1285,7 +1285,7 @@ function renderOverview(){
   const expiredAds = D.ads.filter(a=>{ if(!(a.group)) return false; if(br&&a.brand!==br) return false; return inRange('overview',a.expire_time); }).length;
   const reviewTotal = rvs.length + kws.length;
   const issues = rvs.filter(r=>r.has_issue==='有').length + kws.filter(kwIsRisk).length;
-  const kwPend = kws.filter(k=>kwIsRisk(k)&&!kwIsDone(k)).length;  // 关键词待处理 = 风险项中未处理（同监控页/日报）
+  const kwPend = kws.filter(kwIsEmpty).length;  // 业务总览「关键词待处理」= 状态空白的数量（2026-06-10 用户改；与监控页/日报「待处理=处理中/其他」不同口径）
   document.getElementById('statsGrid').innerHTML = [
     ['收款广告数',adsWithGroup.length,'','ads'],['收款金额',total.toLocaleString(),'',''],
     ['广告到期',expiredAds,expiredAds>0?'warn':'',''],['检查总量',reviewTotal,'',''],
@@ -1441,9 +1441,11 @@ function reportRangeLabel(){
 }
 // 关键词口径（与「关键词监控」页规则#11 共用，唯一来源，勿各页各写）：
 // 已处理/已闭环 = 处理状态「已完成」；待处理/未处理 = 处理状态「处理中/其他」；风险项/发现问题 = 待处理 + 已处理（三种状态合计）
-const kwIsDone=k=>k.status==='已完成'||k.status==='无异常';   // 已处理/已闭环：含「无异常」（2026-06-10 改）
-const kwIsPending=k=>k.status==='处理中'||k.status==='其他';   // 待处理
+const kwIsDone=k=>k.status==='已完成'||k.status==='无异常';   // 日报「已处理/已闭环」：含无异常
+const kwDoneStrict=k=>k.status==='已完成';                    // 监控页「已完成」卡：仅已完成，不含无异常
+const kwIsPending=k=>k.status==='处理中'||k.status==='其他';   // 待处理（监控页/日报）
 const kwIsRisk=k=>k.status==='已完成'||kwIsPending(k);         // 风险项/发现问题 = 真问题（已完成+待处理），不含无异常
+const kwIsEmpty=k=>!k.status||String(k.status).trim()==='';   // 业务总览「关键词待处理」卡：状态空白
 function reportStat(brand){
   const rvs=D.reviews.filter(r=>(!brand||r.brand===brand)&&inRange('report',r.date));
   const kws=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('report',k.log_time));
@@ -1787,7 +1789,7 @@ function openKwCat(cat,ev){
   ev.stopPropagation();
   const pop=document.getElementById('kwCatPop');
   const nos=kwCat[cat]||[];
-  const titles={risk:'风险项',pending:'待处理',done:'已处理'};
+  const titles={risk:'风险项',pending:'待处理',done:'已完成'};
   pop.innerHTML=`<div class="kwpop-h">${titles[cat]} · 共 ${nos.length} 条 <span style="font-weight:400;color:var(--text-muted)">(可多选)</span><a onclick="closeKwCat()" style="float:right;color:var(--text-muted);cursor:pointer;font-weight:400">✕</a></div>`+
     (nos.length?nos.map(n=>n!=null&&String(n).trim()!==''?`<span class="kwpop-no${kwPick.has(String(n))?' on':''}" onclick="toggleKwNo(this,'${esc(String(n)).replace(/'/g,"\\'")}')">${esc(n)}</span>`:`<span class="kwpop-no dis">无编号</span>`).join(''):'<div style="padding:6px;color:var(--text-muted)">无记录</div>');
   pop.style.display='block';
@@ -1823,11 +1825,11 @@ function renderKw(){
   // 三张统计卡：已处理=状态「已完成」；待处理=状态「处理中/其他」；风险项=待处理+已处理（kwIsRisk）。pendList=风险项中非已处理 即待处理。按当前日期范围+品牌统计，不受处理状态下拉/搜索/列筛选影响
   const kwBase=D.keywords.filter(k=>{ if(br&&k.brand!==br) return false; return inRange('keywords',k.log_time); });
   const riskList=kwBase.filter(kwIsRisk);
-  const doneList=kwBase.filter(kwIsDone);
+  const doneList=kwBase.filter(kwDoneStrict);   // 监控页「已完成」卡 = 仅已完成，不含无异常
   const pendList=kwBase.filter(k=>kwIsRisk(k)&&!kwIsDone(k));
   kwCat={ risk:riskList.map(k=>k.no), pending:pendList.map(k=>k.no), done:doneList.map(k=>k.no) };
   document.getElementById('kwStats').innerHTML=[
-    ['风险项',riskList.length,'risk'],['待处理',pendList.length,'pending'],['已处理',doneList.length,'done']
+    ['风险项',riskList.length,'risk'],['待处理',pendList.length,'pending'],['已完成',doneList.length,'done']
   ].map(([l,v,c])=>`<div class="kwc ${c}" onclick="openKwCat('${c}',event)" title="点击查看编号"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
   let topRows=D.keywords.filter(k=>{ if(br&&k.brand!==br) return false; return inRange('keywords',k.log_time); });
   if(st==='已完成') topRows=topRows.filter(r=>r.status==='已完成'||r.status==='无异常');
