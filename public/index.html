@@ -344,6 +344,14 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .cardmodal .dt tbody td,.ovd-inner .dt tbody td{vertical-align:top}
 /* 关键词弹窗：来源群/发送人/命中关键词/登记时间 收窄，给消息内容/AI分析腾空间 */
 .cardmodal .dt td.kwn,.ovd-inner .dt td.kwn{max-width:104px;white-space:normal;word-break:break-word;vertical-align:top;font-size:12px}
+/* 设置弹窗（更多→设置，仅制作者可见） */
+.set-lbl{font-size:12px;color:var(--text-secondary);margin-bottom:6px;font-weight:600}
+.set-inp{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-hover);color:var(--text-primary);font-size:14px;outline:none}
+.set-inp:focus{border-color:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.15)}
+select.set-inp{cursor:pointer}
+.set-btn{padding:11px;border:none;border-radius:8px;font-size:14px;font-weight:600;color:#0b0e1a;background:linear-gradient(120deg,#7dd3fc,#a78bfa);cursor:pointer}
+.set-btn:hover{filter:brightness(1.1)}
+.set-btn:disabled{opacity:.6;cursor:wait}
 body.day .b-bl{background:#dbeafe;color:#2563eb;border-color:#bfdbfe}
 .b-o{background:#7c2d1230;color:#fb923c;border:1px solid #7c2d1260}
 body.day .b-o{background:#ffedd5;color:#ea580c;border-color:#fed7aa}
@@ -554,6 +562,10 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
         <div class="nav-item" data-page="ai" onclick="nav(this)">
           <span class="nav-ico">🤖</span><span class="nav-full">AI成效</span><span class="nav-short">AI</span>
           <span class="nav-cnt" id="cnt-ai">-</span>
+        </div>
+        <!-- 设置：仅制作者身份可见（启动脚本按 window.YP_ROLE 控制），打开访问密码管理弹窗 -->
+        <div class="nav-item" id="nav-settings" style="display:none" onclick="openSettings()">
+          <span class="nav-ico">⚙️</span><span class="nav-full">设置</span><span class="nav-short">设置</span>
         </div>
       </div>
     </div>
@@ -2039,7 +2051,59 @@ async function manualRefresh(){
   btn.disabled=false; icon.textContent='🔄'; txt.textContent='同步数据';
 }
 
+// ── 设置（更多→设置，仅制作者可见）：在线修改三种身份的访问密码，写入 Worker KV ──
+function openSettings(){
+  closeSettings();
+  const mask=document.createElement('div');
+  mask.id='settingsModal'; mask.className='cardmodal-mask';
+  mask.addEventListener('click', closeSettings);
+  const box=document.createElement('div');
+  box.className='cardmodal';
+  box.style.cssText='width:min(420px,92vw);height:auto;max-height:85vh';
+  box.addEventListener('click', e=>e.stopPropagation());
+  box.innerHTML=`
+    <div class="op-hd"><span>⚙️ 设置 · 访问密码</span><button type="button" class="op-x" onclick="closeSettings()">✕</button></div>
+    <div style="padding:18px 20px 22px;display:flex;flex-direction:column;gap:14px">
+      <div>
+        <div class="set-lbl">要修改的身份</div>
+        <select id="set-role" class="set-inp">
+          <option value="owner">制作者（全部权限）</option>
+          <option value="advanced">高级访问者（部分权限）</option>
+          <option value="viewer">普通访问者（基础查看）</option>
+        </select>
+      </div>
+      <div><div class="set-lbl">新密码（4~64 位）</div><input type="password" id="set-pw" class="set-inp" placeholder="输入新密码" autocomplete="new-password"></div>
+      <div><div class="set-lbl">确认新密码</div><input type="password" id="set-pw2" class="set-inp" placeholder="再输一遍" autocomplete="new-password"></div>
+      <div><div class="set-lbl">当前制作者密码（安全校验）</div><input type="password" id="set-cur" class="set-inp" placeholder="输入当前制作者密码" autocomplete="current-password"></div>
+      <button type="button" id="set-save" class="set-btn" onclick="saveSettings()">保存修改</button>
+      <div id="set-msg" style="font-size:12px;min-height:16px"></div>
+    </div>`;
+  mask.appendChild(box);
+  document.body.appendChild(mask);
+}
+function closeSettings(){ const m=document.getElementById('settingsModal'); if(m) m.remove(); }
+async function saveSettings(){
+  const role=document.getElementById('set-role').value;
+  const pw=document.getElementById('set-pw').value.trim();
+  const pw2=document.getElementById('set-pw2').value.trim();
+  const cur=document.getElementById('set-cur').value;
+  const msg=document.getElementById('set-msg');
+  const show=(t,ok)=>{ msg.textContent=t; msg.style.color=ok?'#34d399':'#fda4af'; };
+  if(pw.length<4||pw.length>64) return show('新密码需为 4~64 位');
+  if(pw!==pw2) return show('两次输入的新密码不一致');
+  if(!cur) return show('请输入当前制作者密码');
+  const btn=document.getElementById('set-save'); btn.disabled=true;
+  try{
+    const r=await fetch('/api/settings/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role,password:pw,current:cur})});
+    const d=await r.json();
+    if(d.success){ show(`「${d.label}」密码已更新，全球生效约需 1 分钟`, true); document.getElementById('set-pw').value=''; document.getElementById('set-pw2').value=''; document.getElementById('set-cur').value=''; }
+    else show(d.error||'修改失败');
+  }catch(e){ show('网络异常，稍后再试'); }
+  btn.disabled=false;
+}
+
 // ── 启动 ──────────────────────────────────────────────
+if(window.YP_ROLE==='owner'){ const n=document.getElementById('nav-settings'); if(n) n.style.display=''; }
 initPresets();
 applyTheme(isDay(), true);
 autoThemeCheck();

@@ -1,11 +1,11 @@
 import { fetchAllData } from './sheets';
-import { handleLogin, handleLogout, loginPage, verifyTicket, verifySession, Role } from './auth';
+import { handleLogin, handleLogout, loginPage, verifyTicket, verifySession, handleChangePassword, Role } from './auth';
 
 interface Env {
   ASSETS: Fetcher;
+  AUTH_KV: KVNamespace;
+  SIGNING_KEY?: string;
   DASH_PASSWORD?: string;
-  DASH_PASSWORD_ADVANCED?: string;
-  DASH_PASSWORD_VIEWER?: string;
 }
 
 const CACHE_KEY = 'https://cache.yipin-internal/api/data/v1';
@@ -33,7 +33,8 @@ export default {
     }
 
     // 其余路径（/api/* 等）认 12 小时会话 Cookie，保证开着的看板数据轮询不断
-    if (!(await verifySession(request, env))) {
+    const sessionRole = await verifySession(request, env);
+    if (!sessionRole) {
       if (pathname.startsWith('/api/')) {
         return new Response(JSON.stringify({ success: false, error: 'unauthorized' }), {
           status: 401,
@@ -41,6 +42,11 @@ export default {
         });
       }
       return Response.redirect(`${url.origin}/login`, 302);
+    }
+
+    // 设置面板：在线修改三种身份的密码（handleChangePassword 内部限制仅制作者）
+    if (pathname === '/api/settings/password' && request.method === 'POST') {
+      return handleChangePassword(request, env, sessionRole);
     }
 
     if (pathname === '/api/all') {

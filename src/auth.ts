@@ -1,18 +1,19 @@
-// 访问密码保护（三种身份 + 每次打开都要登录）：
-// - 三种身份各有独立密码，存 Worker Secret：制作者 DASH_PASSWORD（也是全局签名密钥）、
-//   高级访问者 DASH_PASSWORD_ADVANCED、普通访问者 DASH_PASSWORD_VIEWER（后两个没设置时该身份不可登录）。
+// 访问密码保护（三种身份 + 每次打开都要登录 + 看板内在线改密码）：
+// - 三种身份各有独立密码，存 KV（AUTH_KV，key = pw:owner / pw:advanced / pw:viewer），
+//   制作者可在看板「更多 → 设置」面板在线修改；KV 没有 pw:owner 时回退到 Secret DASH_PASSWORD
+//   （防止 KV 误删后把自己锁在外面）。advanced / viewer 没设密码时该身份不可登录。
+// - 令牌签名密钥是 Secret SIGNING_KEY（与密码解耦：改密码不会让已打开的看板断流；
+//   想踢掉所有人就换 SIGNING_KEY）。SIGNING_KEY 缺失时回退 DASH_PASSWORD。
 // - 登录成功发两样东西：① 60 秒「门票」(URL 参数 t) 只用于打开看板页一次，页面加载后立刻从
 //   地址栏抹掉，所以刷新/重开必回登录页；② 12 小时会话 Cookie 只给 /api/* 用，保证开着的
-//   看板每分钟的数据轮询不断。
-// - 令牌格式 `${role}.${过期毫秒}.${HMAC签名}`，签名密钥统一用 DASH_PASSWORD——改制作者密码
-//   即让所有身份的全部会话/门票失效。
+//   看板每分钟的数据轮询不断。令牌格式 `${role}.${过期毫秒}.${HMAC签名}`。
 
 export type Role = 'owner' | 'advanced' | 'viewer';
 
 export interface AuthEnv {
+  AUTH_KV: KVNamespace;
+  SIGNING_KEY?: string;
   DASH_PASSWORD?: string;
-  DASH_PASSWORD_ADVANCED?: string;
-  DASH_PASSWORD_VIEWER?: string;
 }
 
 const AUTH_COOKIE = 'yp_auth';
@@ -21,13 +22,17 @@ const TICKET_TTL = 60; // 秒：打开看板页的一次性门票
 
 const ROLE_LABEL: Record<Role, string> = { owner: '制作者', advanced: '高级访问者', viewer: '普通访问者' };
 
-function rolePassword(env: AuthEnv, role: Role): string | undefined {
-  if (role === 'owner') return env.DASH_PASSWORD;
-  if (role === 'advanced') return env.DASH_PASSWORD_ADVANCED;
-  return env.DASH_PASSWORD_VIEWER;
+function signingKey(env: AuthEnv): string | undefined {
+  return env.SIGNING_KEY || env.DASH_PASSWORD;
 }
 
-function isRole(v: string): v is Role {
+async function rolePassword(env: AuthEnv, role: Role): Promise<string | undefined> {
+  const stored = await env.AUTH_KV.get(`pw:${role}`);
+  if (stored) return stored;
+  return role === 'owner' ? env.DASH_PASSWORD : undefined;
+}
+
+function isRole(v: unknown): v is Role {
   return v === 'owner' || v === 'advanced' || v === 'viewer';
 }
 
@@ -40,11 +45,11 @@ export async function handleLogin(request: Request, env: AuthEnv): Promise<Respo
   } catch {
     // 非表单提交，按空处理
   }
-  if (!env.DASH_PASSWORD) return loginPage('管理员尚未配置访问密码', 401);
+  if (!signingKey(env)) return loginPage('管理员尚未配置访问密码', 401);
   if (!isRole(role)) return loginPage('请先选择访问身份', 400);
-  const expected = rolePassword(env, role);
+  const expected = await rolePassword(env, role);
   if (!expected) return loginPage(`「${ROLE_LABEL[role]}」的密码还没设置，请先用其他身份进入`, 401, role);
-  if (input !== expected) return loginPage('密码不对，再试一次', 401, role);
+  if (!input || input !== expected) return loginPage('密码不对，再试一次', 401, role);
 
   const ticket = await makeToken(env, role, 'ticket', TICKET_TTL);
   const session = await makeToken(env, role, 'session', SESSION_TTL);
@@ -67,6 +72,34 @@ export function handleLogout(): Response {
   });
 }
 
+/** 看板设置面板的改密码接口（仅制作者会话可调，且需重新输入当前制作者密码） */
+export async function handleChangePassword(request: Request, env: AuthEnv, sessionRole: Role | null): Promise<Response> {
+  const json = (status: number, body: Record<string, unknown>) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+
+  if (sessionRole !== 'owner') return json(403, { success: false, error: '只有制作者可以修改密码' });
+
+  let target: unknown, password = '', current = '';
+  try {
+    const body = (await request.json()) as Record<string, unknown>;
+    target = body.role;
+    password = String(body.password ?? '');
+    current = String(body.current ?? '');
+  } catch {
+    return json(400, { success: false, error: '请求格式不对' });
+  }
+  if (!isRole(target)) return json(400, { success: false, error: '身份参数不对' });
+
+  const ownerPw = await rolePassword(env, 'owner');
+  if (!ownerPw || current !== ownerPw) return json(403, { success: false, error: '当前制作者密码不对' });
+
+  password = password.trim();
+  if (password.length < 4 || password.length > 64) return json(400, { success: false, error: '新密码需为 4~64 位（不含首尾空格）' });
+
+  await env.AUTH_KV.put(`pw:${target}`, password);
+  return json(200, { success: true, role: target, label: ROLE_LABEL[target] });
+}
+
 /** 校验看板页门票（URL 参数 t），通过则返回身份 */
 export async function verifyTicket(env: AuthEnv, ticket: string | null): Promise<Role | null> {
   return verifyToken(env, ticket, 'ticket');
@@ -79,17 +112,18 @@ export async function verifySession(request: Request, env: AuthEnv): Promise<Rol
 
 async function makeToken(env: AuthEnv, role: Role, kind: 'ticket' | 'session', ttlSec: number): Promise<string> {
   const exp = Date.now() + ttlSec * 1000;
-  const sig = await sign(env.DASH_PASSWORD!, `${kind}.${role}.${exp}`);
+  const sig = await sign(signingKey(env)!, `${kind}.${role}.${exp}`);
   return `${role}.${exp}.${sig}`;
 }
 
 async function verifyToken(env: AuthEnv, token: string | null, kind: 'ticket' | 'session'): Promise<Role | null> {
-  if (!token || !env.DASH_PASSWORD) return null;
+  const key = signingKey(env);
+  if (!token || !key) return null;
   const [role, expStr, sig] = token.split('.');
   if (!role || !expStr || !sig || !isRole(role)) return null;
   const exp = Number(expStr);
   if (!Number.isFinite(exp) || exp < Date.now()) return null;
-  return sig === (await sign(env.DASH_PASSWORD, `${kind}.${role}.${exp}`)) ? role : null;
+  return sig === (await sign(key, `${kind}.${role}.${exp}`)) ? role : null;
 }
 
 async function sign(key: string, msg: string): Promise<string> {

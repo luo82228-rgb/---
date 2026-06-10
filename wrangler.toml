@@ -3,6 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2024-09-09"
 compatibility_flags = ["nodejs_compat"]
 
+# 三种身份的访问密码存这里（key: pw:owner / pw:advanced / pw:viewer），看板设置面板可在线修改
+[[kv_namespaces]]
+binding = "AUTH_KV"
+id = "3eedd204deeb492595bf61787c572539"
+
 [assets]
 directory = "./public"
 binding = "ASSETS"
