@@ -143,8 +143,8 @@ function getCookie(request: Request, name: string): string | null {
 }
 
 export function loginPage(error = '', status = 200, selectedRole: Role = 'owner'): Response {
-  const card = (role: Role, name: string, desc: string) =>
-    `<label class="role"><input type="radio" name="role" value="${role}"${role === selectedRole ? ' checked' : ''}><div><b>${name}</b><span>${desc}</span></div></label>`;
+  const card = (role: Role, name: string) =>
+    `<label class="role"><input type="radio" name="role" value="${role}"${role === selectedRole ? ' checked' : ''}><div><b>${name}</b></div></label>`;
   const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>逸品业务看板 · 登录</title>
@@ -161,7 +161,6 @@ h1{font-size:22px;font-weight:700;background:linear-gradient(120deg,#7dd3fc,#a78
 .role input{display:none}
 .role div{padding:12px 6px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .15s}
 .role b{display:block;font-size:14px;color:#e2e8f0}
-.role span{display:block;margin-top:4px;font-size:11px;color:rgba(226,232,240,.5)}
 .role input:checked+div{border-color:#7dd3fc;background:rgba(125,211,252,.12);box-shadow:0 0 0 2px rgba(125,211,252,.25),0 0 18px rgba(125,211,252,.18)}
 .role input:checked+div b{color:#7dd3fc}
 input[type=password]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#e2e8f0;font-size:15px;outline:none;text-align:center;letter-spacing:2px}
@@ -173,9 +172,9 @@ button:hover{filter:brightness(1.1)}
 <form class="card" method="POST" action="/login">
 <h1>逸品业务看板</h1><p class="sub">选择身份，输入对应的访问密码</p>
 <div class="roles">
-${card('owner', '制作者', '全部权限')}
-${card('advanced', '高级访问者', '部分权限')}
-${card('viewer', '普通访问者', '基础查看')}
+${card('owner', '制作者')}
+${card('advanced', '高级访问者')}
+${card('viewer', '普通访问者')}
 </div>
 <input type="password" name="password" placeholder="访问密码" autofocus autocomplete="current-password" required>
 <button type="submit">进入看板</button>
