@@ -52,17 +52,24 @@ export default {
     if (pathname === '/api/all') {
       const cache = caches.default;
       const cached = await cache.match(new Request(CACHE_KEY));
-      if (cached) return cached;
-      return buildAndCache(cache);
+      const res = cached || (await buildAndCache(cache));
+      return trimForRole(res, sessionRole);
     }
 
     if (pathname === '/api/refresh') {
       const cache = caches.default;
       await cache.delete(new Request(CACHE_KEY));
-      return buildAndCache(cache);
+      return trimForRole(await buildAndCache(cache), sessionRole);
     }
 
     if (pathname === '/api/debug') {
+      // 能查任意原始 sheet，仅制作者可用
+      if (sessionRole !== 'owner') {
+        return new Response(JSON.stringify({ success: false, error: 'forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        });
+      }
       const BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYjTwWrWGzl6iPrqmxp8rldOod7jhtWG8guYRo5RFOe1xXfo6DwxsIZ7mHJUP0EBq2xtGpo0zOEZOi/pub';
       const url = new URL(request.url);
       const sheet = url.searchParams.get('sheet') || '关键词提醒yp';
@@ -83,6 +90,25 @@ export default {
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
+
+// 数据级隔离（与前端 PAGE_DENY 矩阵对应）：普通访问者的 API 响应里不含
+// 广告/任务/AI 的原始数据；缓存仍存全量，逐请求按身份裁剪
+async function trimForRole(res: Response, role: Role): Promise<Response> {
+  if (role !== 'viewer') return res;
+  try {
+    const data = (await res.json()) as Record<string, unknown>;
+    for (const k of ['ads', 'tasks', 'ai_items']) if (k in data) data[k] = [];
+    return new Response(JSON.stringify(data), {
+      status: res.status,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'bad payload' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
+  }
+}
 
 async function serveDashboard(origin: string, env: Env, role: Role): Promise<Response> {
   const res = await env.ASSETS.fetch(new Request(`${origin}/`));

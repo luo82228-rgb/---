@@ -618,7 +618,7 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
         </select>
       </div>
       <div class="stats" id="statsGrid"></div>
-      <div class="tbox">
+      <div class="tbox" id="ov-brandbox">
         <div class="tbox-head">
           <span class="tbox-title">品牌汇总</span>
           <span class="t-count" id="brandCnt">共 0 个品牌</span>
@@ -1390,12 +1390,16 @@ function renderOverview(){
   const reviewTotal = rvs.length + kws.length;
   const issues = rvs.filter(r=>r.has_issue==='有').length + kws.filter(kwIsRisk).length;
   const kwPend = kws.filter(kwIsEmpty).length;  // 业务总览「关键词待处理」= 状态空白的数量（2026-06-10 用户改；与监控页/日报「待处理=处理中/其他」不同口径）
-  document.getElementById('statsGrid').innerHTML = [
+  const ovCards = [
     ['收款广告数',adsWithGroup.length,'','ads'],['收款金额',total.toLocaleString(),'','ads'],
     ['广告到期',expiredAds,expiredAds>0?'warn':'','expire'],['检查总量',reviewTotal,'','check'],
     ['审查台账',rvs.length,'','rvs'],['关键词',kws.length,'','kws'],
     ['发现问题',issues,issues>0?'warn':'ok','issues'],['关键词待处理',kwPend,kwPend>0?'warn':'','kwpend'],
-  ].map(([l,v,c,k])=>`<div class="scard ${c}" onclick="openCardModal('${k}','${l}')" style="cursor:pointer"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
+  ];
+  // 普通访问者：广告数据已被服务端裁剪（/api/all 不下发 ads），隐藏广告类卡片和品牌汇总，避免显示误导性的 0
+  const ovVis = window.YP_ROLE==='viewer' ? ovCards.filter(([l])=>!['收款广告数','收款金额','广告到期'].includes(l)) : ovCards;
+  document.getElementById('statsGrid').innerHTML = ovVis.map(([l,v,c,k])=>`<div class="scard ${c}" onclick="openCardModal('${k}','${l}')" style="cursor:pointer"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
+  if(window.YP_ROLE==='viewer'){ document.getElementById('ov-brandbox').style.display='none'; return; }
   const allBrandAds = D.ads.filter(a=>{ if(!(a.group)) return false; if(br&&a.brand!==br) return false; return true; });
   const brandSet = [...new Set(allBrandAds.map(a=>a.brand))].filter(Boolean).sort();
   document.getElementById('brandCnt').textContent = `共 ${brandSet.length} 个品牌`;
