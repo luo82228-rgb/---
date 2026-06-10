@@ -356,6 +356,18 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .set-btn:hover{filter:brightness(1.1)}
 .set-btn:disabled{opacity:.6;cursor:wait}
 .set-msg{font-size:12px;min-height:16px}
+.set-hint{font-size:12px;color:var(--text-muted)}
+/* 夜间模式下设置页文字整体加深一档：半透明卡片叠在画上，默认 muted/secondary 偏浅看不清（昼间维持原样） */
+body:not(.day) #page-settings .set-lbl{color:var(--text-primary)}
+body:not(.day) #page-settings .set-sub,
+body:not(.day) #page-settings .set-hint,
+body:not(.day) #page-settings .pf-lbl{color:var(--text-secondary)}
+body:not(.day) #page-settings .empty{color:var(--text-muted)}
+body:not(.day) #page-settings .set-ttl,
+body:not(.day) #page-settings .set-lbl,
+body:not(.day) #page-settings .set-sub,
+body:not(.day) #page-settings .set-hint,
+body:not(.day) #page-settings .pf-lbl{text-shadow:0 1px 3px rgba(0,0,0,.55)}
 body.day .b-bl{background:#dbeafe;color:#2563eb;border-color:#bfdbfe}
 .b-o{background:#7c2d1230;color:#fb923c;border:1px solid #7c2d1260}
 body.day .b-o{background:#ffedd5;color:#ea580c;border-color:#fed7aa}
@@ -986,7 +998,7 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
         <div class="pf" style="align-items:center;gap:10px;flex-wrap:wrap">
           <span class="pf-lbl">🔐 安全校验：</span>
           <input type="password" id="set-cur" class="set-inp" style="width:230px" placeholder="输入当前制作者密码" autocomplete="current-password">
-          <span style="font-size:12px;color:var(--text-muted)">修改任意身份的密码前，需先在这里输入当前制作者密码</span>
+          <span class="set-hint">修改任意身份的密码前，需先在这里输入当前制作者密码</span>
         </div>
         <div class="set-grid">
           <div class="scard set-card">
