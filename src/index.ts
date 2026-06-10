@@ -24,35 +24,22 @@ export default {
       return buildAndCache(cache);
     }
 
-    // 调试：逐步测试抓取 + 解析流程
     if (pathname === '/api/debug') {
       const BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYjTwWrWGzl6iPrqmxp8rldOod7jhtWG8guYRo5RFOe1xXfo6DwxsIZ7mHJUP0EBq2xtGpo0zOEZOi/pub';
-      const sheetName = '2604-广告明细YP';
-      const csvUrl = `${BASE}?output=csv&sheet=${encodeURIComponent(sheetName)}`;
+      const url = new URL(request.url);
+      const sheet = url.searchParams.get('sheet') || '关键词提醒yp';
       try {
-        const res = await fetch(csvUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const res = await fetch(`${BASE}?output=csv&sheet=${encodeURIComponent(sheet)}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         const text = await res.text();
         const lines = text.trim().split(/\r?\n/);
-        // 找表头行
         let headerIdx = -1, headers: string[] = [];
         for (let i = 0; i < lines.length; i++) {
           const cols = lines[i].split(',').map(c => c.trim());
           if (cols.filter(c => c !== '').length >= 2) { headerIdx = i; headers = cols; break; }
         }
-        // 数据行数
-        const dataRows = lines.slice(headerIdx + 1).filter(l => l.replace(/,/g,'').trim() !== '').length;
-        return new Response(JSON.stringify({
-          status: res.status,
-          ok: res.ok,
-          totalLines: lines.length,
-          headerIdx,
-          headers: headers.filter(h => h !== ''),
-          dataRows,
-          firstDataLine: lines.slice(headerIdx + 1).find(l => l.replace(/,/g,'').trim() !== ''),
-        }), { headers: { 'Content-Type': 'application/json' } });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: String(e) }), { headers: { 'Content-Type': 'application/json' } });
-      }
+        const dataLines = lines.slice(headerIdx + 1).filter(l => l.replace(/,/g, '').trim() !== '');
+        return new Response(JSON.stringify({ sheet, status: res.status, headerIdx, headers: headers.filter(h => h !== ''), dataRows: dataLines.length, samples: dataLines.slice(0, 3) }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+      } catch (e) { return new Response(JSON.stringify({ error: String(e) }), { headers: { 'Content-Type': 'application/json' } }); }
     }
 
     return env.ASSETS.fetch(request);
