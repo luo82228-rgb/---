@@ -14,27 +14,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 ══════════════════════════════════════ */
 :root{
   color-scheme:dark;
-  --bg-base:#0f1117;
-  --bg-panel:#13151f;
-  --bg-card:#1a1d2e;
-  --bg-hover:#1e2540;
-  --bg-input:#0f1117;
-  --border:#2d3250;
-  --border-hover:#3d4270;
-  --text-primary:#e2e8f0;
-  --text-secondary:#94a3b8;
-  --text-muted:#64748b;
-  --text-faint:#475569;
-  --accent:#7c8cf8;
-  --accent-dim:#7c8cf820;
-  --btn-bg:#3a4055;
-  --th-bg:#0f1117;
-  --row-border:#1e2235;
-  --brand-bg:#2d3250;
-  --brand-color:#94a3b8;
-  --scrollbar:#2d3250;
-  --toast-bg:#1a1d2e;
+  --bg-base:#070912;
+  --bg-panel:rgba(18,21,33,0.62);
+  --bg-card:rgba(22,26,42,0.55);
+  --bg-hover:rgba(139,156,255,0.10);
+  --bg-input:rgba(10,12,22,0.55);
+  --border:rgba(139,156,255,0.18);
+  --border-hover:rgba(139,156,255,0.45);
+  --text-primary:#e7ecf6;
+  --text-secondary:#9aa6c4;
+  --text-muted:#6b7699;
+  --text-faint:#4a5375;
+  --accent:#8b9cff;
+  --accent-dim:rgba(139,156,255,0.16);
+  --btn-bg:rgba(139,156,255,0.14);
+  --th-bg:rgba(13,16,28,0.92);
+  --row-border:rgba(139,156,255,0.08);
+  --brand-bg:rgba(139,156,255,0.16);
+  --brand-color:#aeb8e0;
+  --scrollbar:rgba(139,156,255,0.35);
+  --toast-bg:rgba(22,26,42,0.85);
   --mode-icon:🌙;
+  /* 水墨山水（夜） */
+  --ink-moon:rgba(214,222,250,0.16);
+  --ink-peak:rgba(160,176,224,0.13);
+  --ink-far:rgba(146,162,214,0.18);
+  --ink-mid:rgba(116,134,194,0.24);
+  --ink-near:rgba(88,106,168,0.34);
+  --ink-mist:rgba(216,224,248,0.11);
 }
 
 /* ══════════════════════════════════════
@@ -42,30 +49,78 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 ══════════════════════════════════════ */
 body.day{
   color-scheme:light;
-  --bg-base:#f0f2f7;
-  --bg-panel:#ffffff;
-  --bg-card:#ffffff;
-  --bg-hover:#f1f4fa;
-  --bg-input:#f8f9fc;
-  --border:#dde1ec;
-  --border-hover:#b8bfd4;
+  --bg-base:#e8ecf6;
+  --bg-panel:rgba(255,255,255,0.72);
+  --bg-card:rgba(255,255,255,0.66);
+  --bg-hover:rgba(90,110,240,0.08);
+  --bg-input:rgba(255,255,255,0.7);
+  --border:rgba(90,110,240,0.20);
+  --border-hover:rgba(90,110,240,0.45);
   --text-primary:#1a1d2e;
-  --text-secondary:#4a5270;
-  --text-muted:#6b7394;
+  --text-secondary:#46506e;
+  --text-muted:#697193;
   --text-faint:#9099b8;
   --accent:#5a6ef0;
-  --accent-dim:#5a6ef015;
-  --btn-bg:#dfe3ed;
-  --th-bg:#f4f6fb;
-  --row-border:#eef0f8;
-  --brand-bg:#e8eaf6;
+  --accent-dim:rgba(90,110,240,0.12);
+  --btn-bg:rgba(90,110,240,0.10);
+  --th-bg:rgba(244,246,251,0.92);
+  --row-border:rgba(90,110,240,0.08);
+  --brand-bg:rgba(90,110,240,0.12);
   --brand-color:#5a6ef0;
-  --scrollbar:#dde1ec;
-  --toast-bg:#ffffff;
+  --scrollbar:rgba(90,110,240,0.35);
+  --toast-bg:rgba(255,255,255,0.85);
   --mode-icon:☀️;
+  /* 水墨山水（昼） */
+  --ink-moon:rgba(86,100,144,0.18);
+  --ink-peak:rgba(86,102,148,0.13);
+  --ink-far:rgba(76,92,138,0.18);
+  --ink-mid:rgba(56,74,122,0.24);
+  --ink-near:rgba(38,54,100,0.34);
+  --ink-mist:rgba(150,164,196,0.13);
 }
 
 body{background:var(--bg-base);color:var(--text-primary)}
+
+/* ── 动态极光背景（固定在所有内容之后） ── */
+body::before{
+  content:"";position:fixed;inset:-25%;z-index:-3;pointer-events:none;
+  background:
+    radial-gradient(38% 48% at 18% 22%, rgba(124,92,255,0.30), transparent 60%),
+    radial-gradient(36% 44% at 82% 16%, rgba(0,196,255,0.22), transparent 60%),
+    radial-gradient(44% 54% at 78% 84%, rgba(255,56,170,0.20), transparent 62%),
+    radial-gradient(40% 50% at 22% 86%, rgba(40,255,200,0.16), transparent 60%);
+  filter:blur(48px) saturate(1.25);
+  animation:aurora 24s ease-in-out infinite alternate;
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(125% 125% at 50% 0%, transparent 55%, rgba(0,0,0,0.55));
+}
+body.day::before{
+  background:
+    radial-gradient(38% 48% at 16% 20%, rgba(90,110,240,0.18), transparent 60%),
+    radial-gradient(36% 44% at 84% 16%, rgba(0,180,255,0.16), transparent 60%),
+    radial-gradient(44% 54% at 80% 85%, rgba(255,120,190,0.14), transparent 62%),
+    radial-gradient(40% 50% at 20% 86%, rgba(40,220,180,0.14), transparent 60%);
+  filter:blur(48px) saturate(1.1);
+}
+body.day::after{background:radial-gradient(125% 125% at 50% 0%, transparent 62%, rgba(120,130,160,0.12))}
+@keyframes aurora{
+  0%{transform:translate3d(-3%,-2%,0) scale(1.05) rotate(0deg)}
+  50%{transform:translate3d(4%,3%,0) scale(1.16) rotate(6deg)}
+  100%{transform:translate3d(-2%,4%,0) scale(1.08) rotate(-4deg)}
+}
+@media (prefers-reduced-motion:reduce){ body::before{animation:none} }
+
+/* ── 《富春山居图》经典段：缩小后横向平铺成连绵长卷，纸色填底 ── */
+.ink-bg{position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background-color:#e9e2d0;                 /* 古卷纸色填底 */
+  background-image:url(/fuchun-tile.jpg);
+  background-repeat:repeat-x;               /* 横向平铺：开阔江面→群峰再起，自然衔接 */
+  background-size:auto 100%;                /* 顶满整屏高度，上下不留白 */
+  background-position:center;
+  opacity:.66}
+body.day .ink-bg{opacity:.94}
 
 /* ── 顶栏 ── */
 .topbar{height:50px;background:var(--bg-panel);border-bottom:1px solid var(--border);
@@ -276,6 +331,80 @@ code.adno{color:var(--accent);font-size:11px;font-family:monospace}
   box-shadow:0 4px 20px rgba(0,0,0,.15)}
 #toast.show{opacity:1;transform:translateY(0)}
 
+/* ════════════════════════════════════════
+   视觉升级 · 玻璃拟态 + 霓虹辉光
+   （纯外观，不改布局/结构/功能）
+════════════════════════════════════════ */
+/* 注：刻意不给 .tbox / thead th 加 backdrop-filter，避免破坏表头 position:sticky */
+.topbar,.pf,.scard,.kwpop,.cf-pop,.note-box,.cdd-panel,.sync-btn,.theme-btn{
+  -webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);
+}
+.topbar{box-shadow:inset 0 -1px 0 rgba(255,255,255,.04),0 6px 28px rgba(0,0,0,.35)}
+/* 导航栏：用与主背景【完全相同】的画作侧栏背景，且 background-attachment:fixed 以视口为基准，
+   于是画面从导航栏连贯流进主区，中间只保留原有的分割线。上方叠一层遮罩做可读性 + 亮度匹配。 */
+.sidebar{
+  background-image:linear-gradient(180deg,rgba(7,9,18,0.46),rgba(7,9,18,0.30)),url(/fuchun-tile.jpg);
+  background-size:cover,auto 100%;
+  background-position:center,center;
+  background-repeat:no-repeat,repeat-x;
+  background-attachment:fixed,fixed;
+}
+body.day .sidebar{
+  background-image:linear-gradient(180deg,rgba(255,255,255,0.42),rgba(255,255,255,0.26)),url(/fuchun-tile.jpg);
+}
+/* 导航文字加深 + 投影，在山水画上清晰可读 */
+.nav-item,.nav-group-hdr{color:var(--text-primary)}
+.nav-item:hover,.nav-group-hdr:hover{color:var(--text-primary)}
+.nav-lbl{color:var(--text-secondary)}
+.sidebar .nav-item,.sidebar .nav-group-hdr,.sidebar .nav-lbl,.sidebar .nav-cnt{text-shadow:0 1px 3px rgba(0,0,0,.6)}
+body.day .sidebar .nav-item,body.day .sidebar .nav-group-hdr,body.day .sidebar .nav-lbl,body.day .sidebar .nav-cnt{text-shadow:0 1px 2px rgba(255,255,255,.65)}
+/* 渐变发光标题 */
+.top-title{
+  background:linear-gradient(90deg,#8b9cff,#5ad1ff 48%,#c08bff);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+  filter:drop-shadow(0 0 10px rgba(124,140,248,.45));
+}
+/* 玻璃面板辉光 + 立体感 */
+.pf,.tbox{box-shadow:0 8px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}
+/* 数据面板更通透，让山水画透出更多（透明度再提升一倍） */
+.tbox{background:rgba(16,19,32,0.33)}
+body.day .tbox{background:rgba(255,255,255,0.36)}
+.pf,.scard{background:rgba(20,23,38,0.20)}
+body.day .pf,body.day .scard{background:rgba(255,255,255,0.25)}
+.scard,.kwc{position:relative;overflow:hidden;
+  box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06);
+  transition:transform .22s ease,box-shadow .3s,background .5s,border-color .5s}
+.scard:hover{transform:translateY(-3px);box-shadow:0 14px 38px rgba(0,0,0,.4),0 0 26px rgba(139,156,255,.20)}
+/* 卡片渐变描边光 */
+.scard::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:linear-gradient(135deg,rgba(139,156,255,.55),transparent 42%,transparent 58%,rgba(90,209,255,.45));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.65}
+.scard .sv{text-shadow:0 0 18px rgba(139,156,255,.4)}
+/* 彩色统计卡辉光 */
+.kwc{transition:transform .12s,filter .15s,box-shadow .3s}
+.kwc.risk{box-shadow:0 8px 24px rgba(239,68,68,.42)}
+.kwc.pending{box-shadow:0 8px 24px rgba(251,191,36,.38)}
+.kwc.done{box-shadow:0 8px 24px rgba(34,197,94,.42)}
+.kwc:hover{transform:translateY(-2px)}
+/* 导航高亮辉光 */
+.nav-item.on{box-shadow:inset 0 0 22px rgba(139,156,255,.14)}
+.nav-item.on .nav-ico{filter:drop-shadow(0 0 6px rgba(139,156,255,.7))}
+/* 按钮 / 输入 辉光 */
+.qbtn.on,.qbtn:hover,.qbtn-ok{box-shadow:0 0 14px rgba(139,156,255,.5)}
+.sync-btn:hover,.theme-btn:hover{box-shadow:0 0 14px rgba(139,156,255,.35)}
+.f-sel:focus,.search:focus,.f-date:focus,.rpt-text:focus,.cf-trig:hover,.cf-trig.has-sel{box-shadow:0 0 0 3px var(--accent-dim)}
+/* 实时脉冲点发光 */
+.ldot.on{box-shadow:0 0 8px #22c55e,0 0 16px #22c55e}
+/* 表格行悬停左侧霓虹条 + 表头微光 */
+table.dt tbody tr:hover{box-shadow:inset 3px 0 0 var(--accent)}
+table.dt thead th{text-shadow:0 0 8px rgba(139,156,255,.15)}
+code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
+/* 渐变滚动条 */
+.content::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--accent),#5ad1ff);border-radius:4px}
+/* 弹窗遮罩也加点模糊 */
+.note-ov{-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+
 @media (max-width:768px){
   html,body{height:100%;overflow:hidden}
   .topbar{padding:0 10px;height:46px;flex-shrink:0}
@@ -329,6 +458,9 @@ code.adno{color:var(--accent);font-size:11px;font-family:monospace}
 </style>
 </head>
 <body>
+
+<!-- 《富春山居图·无用师卷》真迹长卷作清晰主背景（公有领域） -->
+<div class="ink-bg" aria-hidden="true"></div>
 
 <div class="topbar">
   <div class="top-title">业务审查部-罗军</div>
