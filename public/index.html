@@ -362,7 +362,7 @@ body:not(.day) #page-settings .set-lbl{color:var(--text-primary)}
 body:not(.day) #page-settings .set-sub,
 body:not(.day) #page-settings .set-hint,
 body:not(.day) #page-settings .pf-lbl{color:var(--text-secondary)}
-body:not(.day) #page-settings .empty{color:var(--text-muted)}
+body:not(.day) #page-settings .empty,body:not(.day) #page-denied .empty{color:var(--text-muted)}
 body:not(.day) #page-settings .set-ttl,
 body:not(.day) #page-settings .set-lbl,
 body:not(.day) #page-settings .set-sub,
@@ -1035,6 +1035,14 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
       </div>
     </div>
 
+    <!-- 无访问权限：受限身份点开受限模块时统一显示这一页（权限表见 JS 的 PAGE_DENY） -->
+    <div class="page" id="page-denied">
+      <div class="empty">
+        <div class="ei">🚫</div><div class="et">无访问权限</div>
+        <div style="margin-top:8px;font-size:12px">当前登录身份无权查看此模块</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1332,14 +1340,27 @@ function toast(msg, icon){
 function emptyRow(cols,icon,msg){ return `<tr><td colspan="${cols}"><div class="empty"><div class="ei">${icon}</div><div class="et">${msg}</div></div></td></tr>`; }
 
 function toggleNavGroup(){ document.getElementById('nav-group-more')?.classList.toggle('open'); }
+// 页面权限（与 window.YP_ROLE 配合）：制作者全开；日报仅制作者；
+// 广告明细/今日关注/任务清单/AI成效 普通访问者不可见。注意这只是展示层控制，
+// /api/all 仍返回全量数据，要做到数据级隔离需在 Worker 端按身份过滤（待做）。
+const PAGE_DENY = {
+  report:   ['advanced','viewer'],
+  ads:      ['viewer'],
+  focus:    ['viewer'],
+  tasks:    ['viewer'],
+  ai:       ['viewer'],
+};
+function pageAllowed(pg){ const d=PAGE_DENY[pg]; return !(d && d.includes(window.YP_ROLE)); }
+
 function nav(el){
   page = el.dataset.page;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on')); el.classList.add('on');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.getElementById('page-'+page)?.classList.add('on');
+  document.getElementById(pageAllowed(page) ? 'page-'+page : 'page-denied')?.classList.add('on');
   renderPage(page);
 }
 function renderPage(pg){
+  if(!pageAllowed(pg)) return;
   if(!D) return;
   if(pg==='overview') renderOverview();
   else if(pg==='report') renderReport();
@@ -2141,6 +2162,8 @@ async function saveRolePw(role){
 
 // ── 启动 ──────────────────────────────────────────────
 document.getElementById(window.YP_ROLE==='owner'?'set-panel':'set-denied').style.display='';
+// 受限模块的导航计数徽章对受限身份隐藏（数字本身也是信息）
+Object.keys(PAGE_DENY).forEach(pg=>{ if(!pageAllowed(pg)){ const c=document.querySelector(`.nav-item[data-page="${pg}"] .nav-cnt`); if(c) c.style.display='none'; } });
 initPresets();
 applyTheme(isDay(), true);
 autoThemeCheck();
