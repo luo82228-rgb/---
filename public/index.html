@@ -353,8 +353,11 @@ body.day .sidebar{
   background-image:linear-gradient(180deg,rgba(255,255,255,0.42),rgba(255,255,255,0.26)),url(/fuchun-tile.jpg);
 }
 /* 导航文字加深 + 投影，在山水画上清晰可读 */
-.nav-item,.nav-group-hdr{color:var(--text-primary)}
+.nav-item,.nav-group-hdr{color:var(--text-primary);font-weight:600}
 .nav-item:hover,.nav-group-hdr:hover{color:var(--text-primary)}
+/* 字体加粗加深：主区表格正文/表头，在山水画背景上更清晰 */
+table.dt tbody td{font-weight:600}
+table.dt thead th{font-weight:700;color:var(--text-secondary)}
 .nav-lbl{color:var(--text-secondary)}
 .sidebar .nav-item,.sidebar .nav-group-hdr,.sidebar .nav-lbl,.sidebar .nav-cnt{text-shadow:0 1px 3px rgba(0,0,0,.6)}
 body.day .sidebar .nav-item,body.day .sidebar .nav-group-hdr,body.day .sidebar .nav-lbl,body.day .sidebar .nav-cnt{text-shadow:0 1px 2px rgba(255,255,255,.65)}
@@ -367,8 +370,8 @@ body.day .sidebar .nav-item,body.day .sidebar .nav-group-hdr,body.day .sidebar .
 /* 玻璃面板辉光 + 立体感 */
 .pf,.tbox{box-shadow:0 8px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}
 /* 数据面板透明度折中：表格调回可读，统计卡/筛选条保持高通透让山水画透出 */
-.tbox{background:rgba(16,19,32,0.48)}
-body.day .tbox{background:rgba(255,255,255,0.54)}
+.tbox{background:rgba(16,19,32,0.42)}
+body.day .tbox{background:rgba(255,255,255,0.48)}
 .pf,.scard{background:rgba(20,23,38,0.22)}
 body.day .pf,body.day .scard{background:rgba(255,255,255,0.28)}
 .scard,.kwc{position:relative;overflow:hidden;
