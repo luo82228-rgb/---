@@ -366,11 +366,11 @@ body.day .sidebar .nav-item,body.day .sidebar .nav-group-hdr,body.day .sidebar .
 }
 /* 玻璃面板辉光 + 立体感 */
 .pf,.tbox{box-shadow:0 8px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}
-/* 数据面板更通透，让山水画透出更多（透明度再提升一倍） */
-.tbox{background:rgba(16,19,32,0.33)}
-body.day .tbox{background:rgba(255,255,255,0.36)}
-.pf,.scard{background:rgba(20,23,38,0.20)}
-body.day .pf,body.day .scard{background:rgba(255,255,255,0.25)}
+/* 数据面板透明度折中：表格调回可读，统计卡/筛选条保持高通透让山水画透出 */
+.tbox{background:rgba(16,19,32,0.62)}
+body.day .tbox{background:rgba(255,255,255,0.70)}
+.pf,.scard{background:rgba(20,23,38,0.22)}
+body.day .pf,body.day .scard{background:rgba(255,255,255,0.28)}
 .scard,.kwc{position:relative;overflow:hidden;
   box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06);
   transition:transform .22s ease,box-shadow .3s,background .5s,border-color .5s}
