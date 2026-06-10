@@ -1341,11 +1341,13 @@ function emptyRow(cols,icon,msg){ return `<tr><td colspan="${cols}"><div class="
 
 function toggleNavGroup(){ document.getElementById('nav-group-more')?.classList.toggle('open'); }
 // 页面权限（与 window.YP_ROLE 配合）：制作者全开；日报仅制作者；
-// 广告明细/今日关注/任务清单/AI成效 普通访问者不可见。注意这只是展示层控制，
-// /api/all 仍返回全量数据，要做到数据级隔离需在 Worker 端按身份过滤（待做）。
+// 普通访问者只开放业务总览（且总览是服务端算好的脱敏快照，见 renderOverview 的 viewer 分支）。
+// 数据级隔离在 Worker 端（trimForRole）：viewer 的 /api/all 不含任何原始明细数组。
 const PAGE_DENY = {
   report:   ['advanced','viewer'],
   ads:      ['viewer'],
+  reviews:  ['viewer'],
+  keywords: ['viewer'],
   focus:    ['viewer'],
   tasks:    ['viewer'],
   ai:       ['viewer'],
@@ -1380,6 +1382,19 @@ function render(){ renderPage(page); }
 // 收款金额口径：已收款 + 已下架（下架前已打款的款项也算进账，与今日关注的"排除已下架"是不同语义）
 function isPaid(a){ const s=a.pay_status||''; return s.includes('已收款')||s.includes('已下架'); }
 function renderOverview(){
+  // 普通访问者：渲染服务端算好并打码的脱敏快照（固定本月+全部品牌），卡片/品牌行不可点开明细
+  if(window.YP_ROLE==='viewer'){
+    const vo=D.viewer_overview;
+    const pf=document.querySelector('#page-overview .pf');
+    if(pf) pf.innerHTML='<span class="pf-lbl">📊 本月数据 · 已脱敏展示</span>';
+    if(!vo){ document.getElementById('statsGrid').innerHTML=''; document.getElementById('brandTable').innerHTML='<div class="empty"><div class="ei">📊</div><div class="et">暂无数据</div></div>'; return; }
+    document.getElementById('statsGrid').innerHTML = vo.stats.map(c=>`<div class="scard ${c.cls||''}"><div class="sv">${esc(c.value)}</div><div class="sl">${esc(c.label)}</div></div>`).join('');
+    document.getElementById('brandCnt').textContent = `共 ${vo.brands.length} 个品牌`;
+    document.getElementById('brandTable').innerHTML = vo.brands.length
+      ? `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${vo.brands.map(r=>`<tr><td><span class="brand">${esc(r.brand)}</span></td><td>${esc(r.ads)}</td><td style="color:var(--accent);font-weight:600">${esc(r.amount)}</td><td>${esc(r.review_cnt)}</td><td>${esc(r.rvs)}</td><td>${esc(r.kws)}</td><td>${esc(r.cover)}</td><td>${esc(r.issues)}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="empty"><div class="ei">📊</div><div class="et">暂无数据</div></div>';
+    return;
+  }
   const br = getBrand('overview');
   const adsWithGroup = D.ads.filter(a=>{ if(!(a.group)) return false; if(br&&a.brand!==br) return false; return inRange('overview',a.pay_time); });
   const total = adsWithGroup.filter(isPaid).reduce((s,a)=>s+num(a.amount),0);
@@ -1390,16 +1405,12 @@ function renderOverview(){
   const reviewTotal = rvs.length + kws.length;
   const issues = rvs.filter(r=>r.has_issue==='有').length + kws.filter(kwIsRisk).length;
   const kwPend = kws.filter(kwIsEmpty).length;  // 业务总览「关键词待处理」= 状态空白的数量（2026-06-10 用户改；与监控页/日报「待处理=处理中/其他」不同口径）
-  const ovCards = [
+  document.getElementById('statsGrid').innerHTML = [
     ['收款广告数',adsWithGroup.length,'','ads'],['收款金额',total.toLocaleString(),'','ads'],
     ['广告到期',expiredAds,expiredAds>0?'warn':'','expire'],['检查总量',reviewTotal,'','check'],
     ['审查台账',rvs.length,'','rvs'],['关键词',kws.length,'','kws'],
     ['发现问题',issues,issues>0?'warn':'ok','issues'],['关键词待处理',kwPend,kwPend>0?'warn':'','kwpend'],
-  ];
-  // 普通访问者：广告数据已被服务端裁剪（/api/all 不下发 ads），隐藏广告类卡片和品牌汇总，避免显示误导性的 0
-  const ovVis = window.YP_ROLE==='viewer' ? ovCards.filter(([l])=>!['收款广告数','收款金额','广告到期'].includes(l)) : ovCards;
-  document.getElementById('statsGrid').innerHTML = ovVis.map(([l,v,c,k])=>`<div class="scard ${c}" onclick="openCardModal('${k}','${l}')" style="cursor:pointer"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
-  if(window.YP_ROLE==='viewer'){ document.getElementById('ov-brandbox').style.display='none'; return; }
+  ].map(([l,v,c,k])=>`<div class="scard ${c}" onclick="openCardModal('${k}','${l}')" style="cursor:pointer"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
   const allBrandAds = D.ads.filter(a=>{ if(!(a.group)) return false; if(br&&a.brand!==br) return false; return true; });
   const brandSet = [...new Set(allBrandAds.map(a=>a.brand))].filter(Boolean).sort();
   document.getElementById('brandCnt').textContent = `共 ${brandSet.length} 个品牌`;

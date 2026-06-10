@@ -1,5 +1,6 @@
 import { fetchAllData } from './sheets';
 import { handleLogin, handleLogout, loginPage, verifyTicket, verifySession, handleChangePassword, Role } from './auth';
+import { buildViewerOverview, OverviewInput } from './overview';
 
 interface Env {
   ASSETS: Fetcher;
@@ -91,13 +92,17 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-// 数据级隔离（与前端 PAGE_DENY 矩阵对应）：普通访问者的 API 响应里不含
-// 广告/任务/AI 的原始数据；缓存仍存全量，逐请求按身份裁剪
+// 数据级隔离（与前端 PAGE_DENY 矩阵对应）：普通访问者只拿到服务端算好、
+// 数值已打码的总览快照（viewer_overview），所有原始明细数组一律置空；
+// 缓存仍存全量，逐请求按身份裁剪
 async function trimForRole(res: Response, role: Role): Promise<Response> {
   if (role !== 'viewer') return res;
   try {
     const data = (await res.json()) as Record<string, unknown>;
-    for (const k of ['ads', 'tasks', 'ai_items']) if (k in data) data[k] = [];
+    if (Array.isArray(data.ads) && Array.isArray(data.reviews) && Array.isArray(data.keywords)) {
+      data.viewer_overview = buildViewerOverview(data as unknown as OverviewInput);
+    }
+    for (const k of ['ads', 'reviews', 'keywords', 'tasks', 'ai_items']) if (k in data) data[k] = [];
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
