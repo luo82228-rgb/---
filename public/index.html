@@ -324,6 +324,7 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .ovd-inner .op-x{cursor:pointer;color:var(--text-muted);font-size:14px;border:none;background:none;padding:0 4px}
 .ovd-inner .op-x:hover{color:var(--text-primary)}
 .ovd-inner .dt{font-size:11px}
+.ovd-inner .ovd-sub{margin:12px 0 6px;font-size:11px;font-weight:700;color:var(--text-secondary)}
 .cellb.on{background:var(--accent);color:#fff}
 .cellb.danger.on{background:#ef4444;border-color:#ef4444;color:#fff}
 body.day .b-bl{background:#dbeafe;color:#2563eb;border-color:#bfdbfe}
@@ -1319,27 +1320,71 @@ function buildOvDetail(key,brand){
   const head=(t)=>`<div class="op-hd"><span>${esc(brand)} · ${t}</span><button type="button" class="op-x" onclick="closeOvRow()">✕</button></div>`;
   const tbl=(cols,rws)=> rws.length
     ? `<table class="dt"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rws.join('')}</tbody></table>`
-    : `<div class="empty" style="padding:22px"><div class="et">暂无明细</div></div>`;
+    : `<div class="empty" style="padding:18px"><div class="et">暂无明细</div></div>`;
+  const t0=today0(), t3=new Date(t0.getTime()+3*864e5);
+  const tv=t0.getFullYear()*10000+t0.getMonth()*100+t0.getDate();
+  const t3v=t3.getFullYear()*10000+t3.getMonth()*100+t3.getDate();
+  const expireTag=(dateStr)=>{
+    const d=parseDate(dateStr); if(!d) return esc(f(dateStr));
+    const dv=d.getFullYear()*10000+d.getMonth()*100+d.getDate();
+    if(dv===tv) return `<span style="color:#ef4444;font-weight:600">${esc(dateStr)}</span>`;
+    if(dv>tv&&dv<=t3v) return `<span style="color:#f59e0b;font-weight:600">${esc(dateStr)}</span>`;
+    return esc(f(dateStr));
+  };
+  // 列与各导航页表格完全一致（表头 + 每列取值/格式）
+  const adsCols=['广告编号','品牌','商务花名','广告对接群','广告类型','广告模式','广告金额','收款状态','打款时间','到期时间','记录人','备注'];
+  const adsRow=r=>`<tr>
+    <td><code class="adno">${esc(r.ad_no)}</code></td>
+    <td><span class="brand">${esc(r.brand)}</span></td>
+    <td>${bizName(r.biz_name)}</td>
+    <td>${esc(f(r.group))}</td>
+    <td>${adType(r.ad_type)}</td><td>${adMode(r.ad_mode)}</td>
+    <td style="color:var(--accent);font-weight:600">${esc(f(r.amount))}</td>
+    <td>${bPay(r.pay_status)}</td><td>${esc(f(r.pay_time))}</td>
+    <td>${expireTag(r.expire_time)}</td><td class="kaiti">${esc(f(r.recorder))}</td>
+    ${clkCell(r.remark,'备注','wrap')}
+  </tr>`;
+  const rvCols=['审查日期','品牌','审查对象','审查人','广告编号','审查场景','审查方式','发现问题','风险等级','是否整改','是否闭环','广告金额','汇总分析'];
+  const rvRow=r=>`<tr>
+    <td>${esc(f(r.date))}</td><td><span class="brand">${esc(r.brand)}</span></td>
+    <td>${bizName(r.target)}</td><td class="kaiti">${esc(f(r.reviewer))}</td>
+    <td><code class="adno">${esc(f(r.ad_no))}</code></td>
+    <td>${rvScene(r.scene)}</td><td>${rvMethod(r.method)}</td>
+    <td>${bIssue(r.has_issue)}</td><td>${bRisk(r.risk_level)}</td>
+    <td>${bYN(r.is_fixed)}</td><td>${bYN(r.is_closed)}</td>
+    <td>${esc(f(r.ad_amount))}</td>
+    ${clkCell(r.summary,'汇总分析')}
+  </tr>`;
+  const kwCols=['编号','品牌','来源群','发送人','命中关键词','消息内容','登记时间','AI分析','处理状态','审查人员','备注'];
+  const kwRow=r=>`<tr>
+    <td>${esc(f(r.no))}</td>
+    <td>${r.brand?`<span class="brand">${esc(r.brand)}</span>`:'-'}</td>
+    <td>${esc(f(r.source))}</td><td>${esc(f(r.sender))}</td>
+    <td>${r.keyword?b(r.keyword,'b-y'):'-'}</td>
+    <td class="wrap" style="font-size:11px;color:var(--text-secondary)">${esc(f(r.content))}</td>
+    <td style="white-space:nowrap">${esc(f(r.log_time))}</td>
+    <td class="wrap" title="${esc(r.ai_analysis)}" style="font-size:11px;color:var(--text-secondary)">${esc(f(r.ai_analysis))}</td>
+    <td>${bKw(r.status)}</td><td class="kaiti">${esc(f(r.reviewer))}</td>
+    ${clkCell(r.remark,'备注')}
+  </tr>`;
   if(key==='ads'){
     const list=D.ads.filter(a=>a.group&&a.brand===brand&&inRange('overview',a.pay_time));
-    return head('收款广告 '+list.length)+tbl(['编号','金额','对接群','到期时间'],
-      list.map(a=>`<tr><td><code class="adno">${esc(a.ad_no)}</code></td><td>${num(a.amount).toLocaleString()}</td><td>${esc(a.group||'')}</td><td>${esc(a.expire_time||'')}</td></tr>`));
+    return head('广告明细 '+list.length+' 条')+tbl(adsCols,list.map(adsRow));
   }
   if(key==='rvs'){
     const list=D.reviews.filter(r=>r.brand===brand&&inRange('overview',r.date));
-    return head('审查台账 '+list.length)+tbl(['日期','广告编号','发现问题','是否闭环'],
-      list.map(r=>`<tr><td>${esc(r.date||'')}</td><td><code class="adno">${esc(r.ad_no||'')}</code></td><td>${r.has_issue==='有'?b('有','b-r'):b('无','b-g')}</td><td>${esc(r.is_closed||'')}</td></tr>`));
+    return head('审查台帐 '+list.length+' 条')+tbl(rvCols,list.map(rvRow));
   }
   if(key==='kws'){
     const list=D.keywords.filter(k=>k.brand===brand&&inRange('overview',k.log_time));
-    return head('关键词 '+list.length)+tbl(['编号','来源群','命中关键词','状态'],
-      list.map(k=>`<tr><td>${esc(k.no||'')}</td><td>${esc(k.source||'')}</td><td>${esc(k.keyword||'')}</td><td>${esc(k.status||'')}</td></tr>`));
+    return head('关键词监控 '+list.length+' 条')+tbl(kwCols,list.map(kwRow));
   }
+  // 发现问题 = 审查问题项 + 关键词风险项；各自沿用对应页面的列
   const rvI=D.reviews.filter(r=>r.brand===brand&&inRange('overview',r.date)&&r.has_issue==='有');
   const kwI=D.keywords.filter(k=>k.brand===brand&&inRange('overview',k.log_time)&&kwIsRisk(k));
-  return head('发现问题 '+(rvI.length+kwI.length))+tbl(['来源','编号','说明','状态'],
-    [...rvI.map(r=>`<tr><td>${b('审查','b-bl')}</td><td><code class="adno">${esc(r.ad_no||'')}</code></td><td>${esc(r.issue_desc||r.summary||'')}</td><td>${r.is_closed==='是'?b('已闭环','b-g'):b('待处理','b-r')}</td></tr>`),
-     ...kwI.map(k=>`<tr><td>${b('关键词','b-y')}</td><td>${esc(k.no||'')}</td><td>${esc(k.keyword||k.content||'')}</td><td>${esc(k.status||'')}</td></tr>`)]);
+  return head('发现问题 '+(rvI.length+kwI.length)+' 项')
+    +`<div class="ovd-sub">审查发现问题 · ${rvI.length} 项</div>`+tbl(rvCols,rvI.map(rvRow))
+    +`<div class="ovd-sub">关键词风险 · ${kwI.length} 项</div>`+tbl(kwCols,kwI.map(kwRow));
 }
 function ovToggleRow(btn){
   const key=btn.dataset.k, brand=btn.dataset.brand, sig=brand+'|'+key;
