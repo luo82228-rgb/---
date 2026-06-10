@@ -318,13 +318,14 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .cellb.danger:hover{background:#ef4444;color:#fff;border-color:#ef4444}
 .cellb.zero{border-color:var(--border);color:var(--text-muted);background:transparent;cursor:default}
 .cellb.zero:hover{background:transparent;color:var(--text-muted)}
-.ov-pop{position:absolute;z-index:1000;min-width:300px;max-width:min(560px,92vw);max-height:380px;overflow:auto;
-  background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.42);backdrop-filter:blur(12px)}
-.ov-pop .op-hd{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;
-  padding:8px 12px;border-bottom:1px solid var(--border);background:var(--th-bg);font-size:12px;font-weight:700;color:var(--text-primary)}
-.ov-pop .op-x{cursor:pointer;color:var(--text-muted);font-size:14px;border:none;background:none;padding:0 4px;line-height:1}
-.ov-pop .op-x:hover{color:var(--text-primary)}
-.ov-pop .dt{font-size:11px}
+.ovd-row>td{padding:0;border-bottom:1px solid var(--border)}
+.ovd-inner{padding:12px 16px;border-top:2px solid var(--accent);max-height:340px;overflow:auto;background:var(--bg-hover)}
+.ovd-inner .op-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;font-weight:700;color:var(--text-primary)}
+.ovd-inner .op-x{cursor:pointer;color:var(--text-muted);font-size:14px;border:none;background:none;padding:0 4px}
+.ovd-inner .op-x:hover{color:var(--text-primary)}
+.ovd-inner .dt{font-size:11px}
+.cellb.on{background:var(--accent);color:#fff}
+.cellb.danger.on{background:#ef4444;border-color:#ef4444;color:#fff}
 body.day .b-bl{background:#dbeafe;color:#2563eb;border-color:#bfdbfe}
 .b-o{background:#7c2d1230;color:#fb923c;border:1px solid #7c2d1260}
 body.day .b-o{background:#ffedd5;color:#ea580c;border-color:#fed7aa}
@@ -954,7 +955,6 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
 <div id="rvCatPop" class="kwpop" style="display:none"></div>
 <div id="toast"></div>
 <div id="cf-pop" class="cf-pop" style="display:none"></div>
-<div id="ov-detail-pop" class="ov-pop" style="display:none"></div>
 
 <script>
 // ══════════════════════════════════════════════════════
@@ -1079,7 +1079,7 @@ function showNote(el){
   document.getElementById('noteOv').classList.add('on');
 }
 function closeNote(){ document.getElementById('noteOv').classList.remove('on'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNote(); closeOvPop(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNote(); closeOvRow(); } });
 const num = s => parseFloat(String(s||'').replace(/,/g,'')) || 0;
 
 function parseDate(s){
@@ -1139,7 +1139,6 @@ document.addEventListener('click', e=>{
   if(!e.target.closest('.cdd')) document.querySelectorAll('.cdd.open').forEach(c=>c.classList.remove('open'));
   if(!e.target.closest('#kwCatPop')&&!e.target.closest('.kwc')) closeKwCat();
   if(!e.target.closest('#rvCatPop')&&!e.target.closest('#rvStats .kwc')) closeRvCat();
-  if(!e.target.closest('#ov-detail-pop')&&!e.target.closest('.cellb')) closeOvPop();
 });
 function setPreset(pg, preset, btn){
   const pfx = pfxOf(pg);
@@ -1300,20 +1299,24 @@ function renderOverview(){
     for(const k of brk){ if(k.source) coverSet.add(k.source); }
     // 收款广告数/审查台账/关键词/发现问题：数字改为可点击徽标，点开下拉看该品牌该指标明细
     const cellb=(v,key)=> v>0
-      ? `<button type="button" class="cellb" data-k="${key}" data-brand="${esc(brand)}" onclick="ovDetailPop(this)">${v}</button>`
+      ? `<button type="button" class="cellb" data-k="${key}" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${v}</button>`
       : `<span class="cellb zero">${v}</span>`;
     const issCell = iss>0
-      ? `<button type="button" class="cellb danger" data-k="issues" data-brand="${esc(brand)}" onclick="ovDetailPop(this)">${iss}个</button>`
+      ? `<button type="button" class="cellb danger" data-k="issues" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${iss}个</button>`
       : b('无','b-g');
     return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${cellb(brGrp.length,'ads')}</td><td style="color:var(--accent);font-weight:600">${amt.toLocaleString()}</td><td>${reviewCnt}</td><td>${cellb(brv.length,'rvs')}</td><td>${cellb(brk.length,'kws')}</td><td>${coverSet.size}</td><td>${issCell}</td></tr>`;
   }).join('');
   document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 // ── 品牌汇总单元格徽标的明细下拉 ──（按当前总览日期范围 + 该行品牌口径，与汇总数字一致）
-let activeOvTrig=null;
-function closeOvPop(){ const p=document.getElementById('ov-detail-pop'); if(p) p.style.display='none'; activeOvTrig=null; }
+let _ovRow=null;
+function closeOvRow(){
+  document.querySelectorAll('#brandTable .ovd-row').forEach(r=>r.remove());
+  document.querySelectorAll('#brandTable .cellb.on').forEach(c=>c.classList.remove('on'));
+  _ovRow=null;
+}
 function buildOvDetail(key,brand){
-  const head=(t)=>`<div class="op-hd"><span>${esc(brand)} · ${t}</span><button type="button" class="op-x" onclick="closeOvPop()">✕</button></div>`;
+  const head=(t)=>`<div class="op-hd"><span>${esc(brand)} · ${t}</span><button type="button" class="op-x" onclick="closeOvRow()">✕</button></div>`;
   const tbl=(cols,rws)=> rws.length
     ? `<table class="dt"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rws.join('')}</tbody></table>`
     : `<div class="empty" style="padding:22px"><div class="et">暂无明细</div></div>`;
@@ -1338,18 +1341,17 @@ function buildOvDetail(key,brand){
     [...rvI.map(r=>`<tr><td>${b('审查','b-bl')}</td><td><code class="adno">${esc(r.ad_no||'')}</code></td><td>${esc(r.issue_desc||r.summary||'')}</td><td>${r.is_closed==='是'?b('已闭环','b-g'):b('待处理','b-r')}</td></tr>`),
      ...kwI.map(k=>`<tr><td>${b('关键词','b-y')}</td><td>${esc(k.no||'')}</td><td>${esc(k.keyword||k.content||'')}</td><td>${esc(k.status||'')}</td></tr>`)]);
 }
-function ovDetailPop(trig){
-  if(activeOvTrig===trig){ closeOvPop(); return; }
-  activeOvTrig=trig;
-  const pop=document.getElementById('ov-detail-pop');
-  pop.innerHTML=buildOvDetail(trig.dataset.k, trig.dataset.brand);
-  pop.style.display='block';
-  const rect=trig.getBoundingClientRect(), popW=pop.offsetWidth;
-  let left=rect.left+window.scrollX;
-  if(left+popW>window.innerWidth+window.scrollX-8) left=window.innerWidth+window.scrollX-popW-8;
-  if(left<8) left=8;
-  pop.style.left=left+'px';
-  pop.style.top=(rect.bottom+window.scrollY+4)+'px';
+function ovToggleRow(btn){
+  const key=btn.dataset.k, brand=btn.dataset.brand, sig=brand+'|'+key;
+  const tr=btn.closest('tr'), same=(_ovRow===sig);
+  closeOvRow();
+  if(same) return;            // 再次点同一个 → 收起
+  const dr=document.createElement('tr');
+  dr.className='ovd-row';
+  dr.innerHTML=`<td colspan="${tr.children.length}"><div class="ovd-inner">${buildOvDetail(key,brand)}</div></td>`;
+  tr.after(dr);
+  btn.classList.add('on');
+  _ovRow=sig;
 }
 
 // ── 日报 ──（时间筛选复用业务总览的自定义日期模式，见 PF.report / onDateChange）
