@@ -20,6 +20,38 @@ const AUTH_COOKIE = 'yp_auth';
 const SESSION_TTL = 12 * 3600; // 秒：API 会话时长，覆盖一个工作日内开着不动的看板
 const TICKET_TTL = 60; // 秒：打开看板页的一次性门票
 
+// 防暴力试密码：按访问者 IP 记连续失败次数（KV key = fail:<ip>，与 pw:* 密码键无关），
+// 连错 MAX_FAILS 次锁定 LOCK_TTL；锁定期内无论输什么（包括正确密码）都拒绝。
+// 登录成功清零。KV 跨节点同步约 60 秒，攻击者换节点可能多试几次，对人肉试错足够。
+const MAX_FAILS = 5;
+const LOCK_TTL = 2 * 3600; // 秒：锁定时长
+const FAIL_WINDOW = 2 * 3600; // 秒：失败计数保留时长（每次输错重新计时）
+
+interface FailRecord {
+  n: number;
+  until?: number; // 锁定截止毫秒，存在且未到期即拒绝登录
+}
+
+function failKeyOf(request: Request): string {
+  return `fail:${request.headers.get('CF-Connecting-IP') || 'unknown'}`;
+}
+
+function lockMessage(until: number): string {
+  const mins = Math.max(1, Math.ceil((until - Date.now()) / 60000));
+  return `连续输错密码 ${MAX_FAILS} 次，已暂时禁止登录，请约 ${mins} 分钟后再试`;
+}
+
+async function registerFail(env: AuthEnv, key: string, prev: FailRecord | null, role: Role): Promise<Response> {
+  const n = (prev?.n ?? 0) + 1;
+  if (n >= MAX_FAILS) {
+    const until = Date.now() + LOCK_TTL * 1000;
+    await env.AUTH_KV.put(key, JSON.stringify({ n, until }), { expirationTtl: LOCK_TTL + 60 });
+    return loginPage(lockMessage(until), 429, role);
+  }
+  await env.AUTH_KV.put(key, JSON.stringify({ n }), { expirationTtl: FAIL_WINDOW });
+  return loginPage(`密码不对，再试一次（连续错 ${MAX_FAILS} 次将禁止登录 2 小时，还剩 ${MAX_FAILS - n} 次机会）`, 401, role);
+}
+
 const ROLE_LABEL: Record<Role, string> = { owner: '制作者', advanced: '高级访问者', viewer: '普通访问者' };
 
 function signingKey(env: AuthEnv): string | undefined {
@@ -46,10 +78,18 @@ export async function handleLogin(request: Request, env: AuthEnv): Promise<Respo
     // 非表单提交，按空处理
   }
   if (!signingKey(env)) return loginPage('管理员尚未配置访问密码', 401);
+
+  const failKey = failKeyOf(request);
+  const failRec = await env.AUTH_KV.get<FailRecord>(failKey, 'json');
+  if (failRec?.until && failRec.until > Date.now()) {
+    return loginPage(lockMessage(failRec.until), 429, isRole(role) ? role : 'owner');
+  }
+
   if (!isRole(role)) return loginPage('请先选择访问身份', 400);
   const expected = await rolePassword(env, role);
   if (!expected) return loginPage(`「${ROLE_LABEL[role]}」的密码还没设置，请先用其他身份进入`, 401, role);
-  if (!input || input !== expected) return loginPage('密码不对，再试一次', 401, role);
+  if (!input || input !== expected) return registerFail(env, failKey, failRec, role);
+  if (failRec) await env.AUTH_KV.delete(failKey); // 登录成功，清空连续失败计数
 
   const ticket = await makeToken(env, role, 'ticket', TICKET_TTL);
   const session = await makeToken(env, role, 'session', SESSION_TTL);
