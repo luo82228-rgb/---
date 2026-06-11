@@ -173,11 +173,59 @@ body.day .home-card{background-color:rgba(255,255,255,0.48);
 .home-card:hover{transform:translateY(-5px) scale(1.02);border-color:var(--border-hover);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 46px rgba(0,0,0,.42),0 0 30px var(--accent-dim)}
 .home-card:active{transform:translateY(-2px) scale(1.01)}
-/* 点卡跳转的立体动效：卡片放大淡出 → 模块页缩放浮入 */
-.home-card.launching{animation:cardLaunch .22s ease forwards;pointer-events:none}
-@keyframes cardLaunch{to{transform:scale(1.12);opacity:0}}
+/* ── 点卡跳转动效（2026-06-11 用户要求炫酷且 9 张卡互不重复）：
+      每个模块一套「卡片起跳(cfx-N) + 页面入场(pfx-N)」，编号映射见 JS 的 PAGE_FX ── */
+.home-card.launching{pointer-events:none;z-index:5}
+.cfx-1{animation:cl1 .30s ease-in forwards}   /* 总览：放大冲屏+模糊 */
+.cfx-2{animation:cl2 .30s ease-in forwards}   /* 日报：3D 翻页 */
+.cfx-3{animation:cl3 .30s ease-in forwards}   /* 广告：向左飞出 */
+.cfx-4{animation:cl4 .30s ease-in forwards}   /* 审查：向上发射 */
+.cfx-5{animation:cl5 .32s ease-in forwards}   /* 关键词：旋转收缩 */
+.cfx-6{animation:cl6 .30s ease-in forwards}   /* 关注：坠落 */
+.cfx-7{animation:cl7 .30s ease-in forwards}   /* 任务：斜切滑出 */
+.cfx-8{animation:cl8 .36s ease-in forwards}   /* AI：能量闪光爆开 */
+.cfx-9{animation:cl9 .30s ease-in forwards}   /* 设置：3D 后仰倒下 */
+@keyframes cl1{to{transform:scale(1.3);opacity:0;filter:blur(5px)}}
+@keyframes cl2{to{transform:perspective(800px) rotateY(88deg);opacity:0}}
+@keyframes cl3{to{transform:translateX(-65vw) rotate(-8deg);opacity:0}}
+@keyframes cl4{to{transform:translateY(-55vh) scale(.85);opacity:0}}
+@keyframes cl5{to{transform:rotate(25deg) scale(.25);opacity:0}}
+@keyframes cl6{to{transform:translateY(55vh) rotate(12deg);opacity:0}}
+@keyframes cl7{to{transform:skewX(-14deg) translateX(60vw);opacity:0}}
+@keyframes cl8{45%{box-shadow:0 0 60px var(--accent),0 0 140px var(--accent-dim);transform:scale(1.06)}to{transform:scale(1.35);opacity:0;filter:brightness(2.4)}}
+@keyframes cl9{to{transform:perspective(800px) rotateX(80deg) translateY(-26px);opacity:0}}
+.page.on.pfx-1{animation:pi1 .5s cubic-bezier(.2,.7,.3,1)}
+.page.on.pfx-2{transform-origin:left center;animation:pi2 .5s cubic-bezier(.2,.7,.3,1)}
+.page.on.pfx-3{animation:pi3 .45s cubic-bezier(.2,.7,.3,1)}
+.page.on.pfx-4{animation:pi4 .45s cubic-bezier(.2,.7,.3,1)}
+.page.on.pfx-5{animation:pi5 .5s cubic-bezier(.2,.7,.3,1)}
+.page.on.pfx-6{animation:pi6 .55s cubic-bezier(.25,.9,.35,1.1)}
+.page.on.pfx-7{animation:pi7 .45s cubic-bezier(.2,.7,.3,1)}
+.page.on.pfx-8{animation:pi8 .55s ease-out}
+.page.on.pfx-9{transform-origin:center top;animation:pi9 .5s cubic-bezier(.2,.7,.3,1)}
+@keyframes pi1{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:none}}                         /* 穿越缩入 */
+@keyframes pi2{from{opacity:0;transform:perspective(1100px) rotateY(-65deg)}to{opacity:1;transform:none}} /* 翻页展开 */
+@keyframes pi3{from{opacity:0;transform:translateX(65vw)}to{opacity:1;transform:none}}                    /* 右侧滑入 */
+@keyframes pi4{from{opacity:0;transform:translateY(55vh)}to{opacity:1;transform:none}}                    /* 底部升起 */
+@keyframes pi5{from{opacity:0;transform:rotate(-10deg) scale(.6)}to{opacity:1;transform:none}}            /* 旋开 */
+@keyframes pi6{from{opacity:0;transform:translateY(-55vh)}60%{transform:translateY(10px)}to{opacity:1;transform:none}}  /* 顶部坠落回弹 */
+@keyframes pi7{from{opacity:0;transform:skewX(10deg) translateX(-60vw)}to{opacity:1;transform:none}}      /* 斜切滑入 */
+@keyframes pi8{from{opacity:0;filter:brightness(2.4) blur(8px);transform:scale(1.08)}60%{filter:brightness(1.3) blur(1px)}to{opacity:1;filter:none;transform:none}}  /* 闪光显影 */
+@keyframes pi9{from{opacity:0;transform:perspective(1100px) rotateX(-55deg)}to{opacity:1;transform:none}} /* 掀盖落下 */
+/* 返回首页：整页浮入 + 9 张卡依次弹起 */
 .page.on{animation:pageIn .3s cubic-bezier(.2,.7,.3,1)}
 @keyframes pageIn{from{opacity:0;transform:scale(.965) translateY(14px)}to{opacity:1;transform:none}}
+/* 卡片依次弹起：延迟走 CSS 变量；:not(.launching) 防止压过起跳动画 cfx-N（ID 选择器优先级更高） */
+#page-home.on .home-card:not(.launching){animation:cardPop .38s cubic-bezier(.2,.7,.3,1) backwards;animation-delay:var(--d,0s)}
+@keyframes cardPop{from{opacity:0;transform:translateY(28px) scale(.9)}to{opacity:1;transform:none}}
+.home-card:nth-child(2){--d:.04s}
+.home-card:nth-child(3){--d:.08s}
+.home-card:nth-child(4){--d:.12s}
+.home-card:nth-child(5){--d:.16s}
+.home-card:nth-child(6){--d:.20s}
+.home-card:nth-child(7){--d:.24s}
+.home-card:nth-child(8){--d:.28s}
+.home-card:nth-child(9){--d:.32s}
 .hc-ico{font-size:36px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25))}
 .hc-name{font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:1px}
 .nav-cnt{position:absolute;top:10px;right:12px;background:var(--brand-bg);color:var(--text-muted);
@@ -1442,16 +1490,23 @@ const PAGE_DENY = {
 function pageAllowed(pg){ const d=PAGE_DENY[pg]; return !(d && d.includes(window.YP_ROLE)); }
 
 // 首页大卡片 → 模块页跳转（2026-06-11 重构：撤掉左侧导航）；模块页平铺整版，左上角返回首页
-// 从卡片点击时传入卡片元素：先播放卡片放大淡出动效，再切页（页面入场动画在 .page.on 上）
+// 每个模块一套不重复的跳转动效（用户要求炫酷）：卡片起跳 cfx-N → 切页 → 页面入场 pfx-N，
+// 动画定义见 CSS「点卡跳转动效」段；返回首页走整页浮入 + 卡片依次弹起（cardPop）
+const PAGE_FX={overview:1,report:2,ads:3,reviews:4,keywords:5,focus:6,tasks:7,ai:8,settings:9};
 function openPage(pg,card){
+  const fx=PAGE_FX[pg]||0;
   if(card){
-    card.classList.add('launching');
-    setTimeout(()=>{ card.classList.remove('launching'); openPage(pg); },170);
+    card.classList.add('launching','cfx-'+fx);
+    setTimeout(()=>{ card.classList.remove('launching','cfx-'+fx); openPage(pg); },250);
     return;
   }
   page = pg;
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.getElementById(pageAllowed(pg) ? 'page-'+pg : 'page-denied')?.classList.add('on');
+  document.querySelectorAll('.page').forEach(p=>{ p.classList.remove('on'); p.className=p.className.replace(/\bpfx-\d+\b/g,'').trim(); });
+  const target=document.getElementById(pageAllowed(pg) ? 'page-'+pg : 'page-denied');
+  if(target){
+    target.classList.add('on');
+    if(fx&&pg!=='home'){ target.classList.add('pfx-'+fx); setTimeout(()=>target.classList.remove('pfx-'+fx),700); }
+  }
   document.getElementById('backBar').style.display = pg==='home' ? 'none' : '';
   const c=document.querySelector('.content'); if(c) c.scrollTop=0;
   renderPage(pg);
