@@ -320,8 +320,8 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .cellb:hover{background:var(--accent);color:#fff}
 .cellb.danger{border-color:#7f1d1d80;color:#f87171;background:#7f1d1d30}
 .cellb.danger:hover{background:#ef4444;color:#fff;border-color:#ef4444}
-.cellb.zero{border-color:var(--border);color:var(--text-muted);background:transparent;cursor:default}
-.cellb.zero:hover{background:transparent;color:var(--text-muted)}
+.cellb.zero{border-color:var(--border);color:var(--text-muted);background:transparent}  /* 0 值也可点（弹空明细），仅样式淡化 */
+.cellb.zero:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 .ovd-row>td{padding:0;border-bottom:1px solid var(--border)}
 .ovd-inner{padding:12px 16px;border-top:2px solid var(--accent);max-height:340px;overflow:auto;background:var(--bg-hover)}
 .ovd-inner .op-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--text-primary)}
@@ -1430,19 +1430,15 @@ function renderOverview(){
     const coverSet = new Set();
     for(const r of brv){ const a=adByNo.get(r.ad_no); if(a&&a.group) coverSet.add(a.group); }
     for(const k of brk){ if(k.source) coverSet.add(k.source); }
-    // 收款广告数/审查台账/关键词/发现问题：数字改为可点击徽标，点开下拉看该品牌该指标明细
-    const cellb=(v,key)=> v>0
-      ? `<button type="button" class="cellb" data-k="${key}" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${v}</button>`
-      : `<span class="cellb zero">${v}</span>`;
-    // 全列徽标化（2026-06-11 用户要求）：收款金额→广告明细（同总览卡片的收款金额）、
-    // 审查次数→检查总量两段明细、覆盖群→相关广告明细、发现问题=无→点开显示空
+    // 全列徽标化（2026-06-11 用户要求）：每个数字列都可点开行内明细；
+    // 0 值也可点（点开显示空明细，仅样式淡化 .zero）——收款金额→广告明细（同总览卡片的
+    // 收款金额）、审查次数→检查总量两段明细、覆盖群→相关广告明细、发现问题=无→点开显示空
+    const cellb=(v,key)=>`<button type="button" class="cellb${v>0?'':' zero'}" data-k="${key}" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${v}</button>`;
     const issCell = iss>0
       ? `<button type="button" class="cellb danger" data-k="issues" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${iss}个</button>`
       : `<button type="button" class="cellb" data-k="issues" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">无</button>`;
     const amtDisp = isAdv ? esc(advAmt(brand)) : amt.toLocaleString();
-    const amtCell = (isAdv || amt>0)
-      ? `<button type="button" class="cellb" data-k="ads" data-brand="${esc(brand)}" onclick="ovToggleRow(this)"${isAdv?' title="本月口径 · 已脱敏"':''}>${amtDisp}</button>`
-      : `<span class="cellb zero">0</span>`;
+    const amtCell = `<button type="button" class="cellb${(isAdv||amt>0)?'':' zero'}" data-k="ads" data-brand="${esc(brand)}" onclick="ovToggleRow(this)"${isAdv?' title="本月口径 · 已脱敏"':''}>${amtDisp}</button>`;
     return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${cellb(brGrp.length,'ads')}</td><td>${amtCell}</td><td>${cellb(reviewCnt,'check')}</td><td>${cellb(brv.length,'rvs')}</td><td>${cellb(brk.length,'kws')}</td><td>${cellb(coverSet.size,'cover')}</td><td>${issCell}</td></tr>`;
   }).join('');
   document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
