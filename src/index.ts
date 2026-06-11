@@ -1,6 +1,6 @@
 import { fetchAllData } from './sheets';
 import { handleLogin, handleLogout, loginPage, verifyTicket, verifySession, handleChangePassword, Role } from './auth';
-import { buildViewerOverview, OverviewInput } from './overview';
+import { buildViewerOverview, maskDataForAdvanced, OverviewInput } from './overview';
 
 interface Env {
   ASSETS: Fetcher;
@@ -92,17 +92,24 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-// 数据级隔离（与前端 PAGE_DENY 矩阵对应）：普通访问者只拿到服务端算好、
-// 数值已打码的总览快照（viewer_overview），所有原始明细数组一律置空；
-// 缓存仍存全量，逐请求按身份裁剪
+// 数据级隔离（与前端 PAGE_DENY 矩阵对应）：
+// - viewer：只拿到服务端算好、数值已打码的总览快照（viewer_overview），原始明细数组一律置空；
+// - advanced：明细全量下发但内容字段 80% 打码、骨架字段保留（maskDataForAdvanced），
+//   金额类求和前端算不出，同样附上脱敏快照（本月口径）供总览取「收款金额」；
+// - owner：全量不裁。缓存仍存全量，逐请求按身份裁剪
 async function trimForRole(res: Response, role: Role): Promise<Response> {
-  if (role !== 'viewer') return res;
+  if (role === 'owner') return res;
   try {
     const data = (await res.json()) as Record<string, unknown>;
-    if (Array.isArray(data.ads) && Array.isArray(data.reviews) && Array.isArray(data.keywords)) {
+    const hasArrays = Array.isArray(data.ads) && Array.isArray(data.reviews) && Array.isArray(data.keywords);
+    if (hasArrays) {
       data.viewer_overview = buildViewerOverview(data as unknown as OverviewInput);
     }
-    for (const k of ['ads', 'reviews', 'keywords', 'tasks', 'ai_items']) if (k in data) data[k] = [];
+    if (role === 'viewer') {
+      for (const k of ['ads', 'reviews', 'keywords', 'tasks', 'ai_items']) if (k in data) data[k] = [];
+    } else if (hasArrays) {
+      maskDataForAdvanced(data); // 必须在 buildViewerOverview 之后——快照要用原文算
+    }
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: { 'Content-Type': 'application/json; charset=utf-8' },

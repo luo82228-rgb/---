@@ -1,7 +1,10 @@
 // 普通访问者的「业务总览」脱敏快照：服务端用全量数据算出默认视图（本月 + 全部品牌 + 分品牌行），
 // 数值打码后才下发（保留约 20% 字符，其余用 * 代替）；原始明细数组对 viewer 全部置空（见 index.ts trimForRole）。
+// 高级访问者也复用这份快照取「收款金额」类数值（明细金额已打码，前端求不出和）。
 // 口径 1:1 复刻前端 renderOverview（本月 preset、isPaid、kwIsRisk/kwIsEmpty、覆盖群反查等），
 // 时间统一按中国时区（UTC+8）的墙上时间比较，与用户浏览器里的口径一致。改前端总览口径时这里要同步改！
+//
+// 本文件还包含高级访问者的整库打码 maskDataForAdvanced（见文件末尾）。
 
 interface AdRow { ad_no: string; brand: string; group: string; amount: string; pay_status: string; pay_time: string; expire_time: string }
 interface ReviewRow { date: string; brand: string; ad_no: string; has_issue: string }
@@ -94,4 +97,63 @@ export function buildViewerOverview(data: OverviewInput): ViewerOverview {
   });
 
   return { range_label: '本月', stats, brands };
+}
+
+// ── 高级访问者整库打码（2026-06-11）──
+// 原则：内容字段 80% 打码，骨架字段（日期/时间、品牌、各类状态/类型/方式）保留明文，
+// 保证前端的时间/品牌筛选、关键词三卡、审查三卡、今日关注到期判断、徽标渲染照常工作。
+// 编号/群名这类要做反查与去重的字段用「防碰撞」打码（确定性 + 不同原文必得不同掩码），
+// 其余内容字段普通确定性打码即可（撞了无所谓，还能避免防碰撞的星号尾巴越长越长）。
+
+type Row = Record<string, unknown>;
+
+const ADV_MASK_FIELDS: Record<string, { unique: string[]; plain: string[] }> = {
+  // unique：参与编号反查/下钻分组/覆盖群去重的字段；plain：纯展示的内容字段
+  ads:      { unique: ['ad_no', 'group'],  plain: ['biz_name', 'amount', 'recorder', 'remark'] },
+  reviews:  { unique: ['ad_no'],           plain: ['target', 'reviewer', 'issue_desc', 'ad_amount', 'summary'] },
+  keywords: { unique: ['no', 'source'],    plain: ['sender', 'keyword', 'content', 'ai_analysis', 'reviewer', 'remark'] },
+  tasks:    { unique: [],                  plain: ['task_name', 'reviewer', 'progress', 'milestone', 'remark'] },
+  ai_items: { unique: ['flow_no'],         plain: ['flow_name', 'summary', 'reviewer', 'input', 'output', 'steps', 'tools', 'save_time', 'remark'] },
+};
+
+/** 文本打码：同 mask 的 80% 风格，但明文头最多 6 字符、星号最多 24 个（几百字的消息/备注不泄露长前缀、也不撑爆单元格） */
+function maskText(s: string): string {
+  if (s.length === 1) return '*';
+  const vis = Math.min(Math.max(1, Math.floor(s.length * 0.2)), 6);
+  return s.slice(0, vis) + '*'.repeat(Math.min(s.length - vis, 24));
+}
+
+/** 就地打码整个 /api/all 载荷（仅高级访问者）。须在 buildViewerOverview 之后调用——快照要用原文算。 */
+export function maskDataForAdvanced(data: Record<string, unknown>): void {
+  // 防碰撞打码：同一原文 → 同一掩码（编号反查、群去重语义不变）；
+  // 不同原文若掩码撞车（如连续编号 YP-001/YP-002 都变 Y*****），尾部补 * 区分
+  const memo = new Map<string, string>();
+  const taken = new Set<string>();
+  const maskUnique = (s: string): string => {
+    const hit = memo.get(s);
+    if (hit !== undefined) return hit;
+    let out = maskText(s);
+    while (taken.has(out)) out += '*';
+    memo.set(s, out);
+    taken.add(out);
+    return out;
+  };
+
+  // 今日关注「已超期」的风险分级按备注原文判定（口径同前端 overdueRiskIdx：
+  // 空=高0，补量中/补时中/沟通中=中1，其余有备注=低2），打码前先算好随行下发
+  if (Array.isArray(data.ads)) {
+    for (const r of data.ads as Row[]) {
+      const s = String(r.remark || '').trim();
+      r.od_risk = !s ? 0 : /补量中|补时中|沟通中/.test(s) ? 1 : 2;
+    }
+  }
+
+  for (const [key, fields] of Object.entries(ADV_MASK_FIELDS)) {
+    const rows = data[key];
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows as Row[]) {
+      for (const f of fields.unique) if (r[f]) r[f] = maskUnique(String(r[f]));
+      for (const f of fields.plain) if (r[f]) r[f] = maskText(String(r[f]));
+    }
+  }
 }

@@ -1341,6 +1341,8 @@ function emptyRow(cols,icon,msg){ return `<tr><td colspan="${cols}"><div class="
 
 function toggleNavGroup(){ document.getElementById('nav-group-more')?.classList.toggle('open'); }
 // 页面权限（与 window.YP_ROLE 配合）：制作者全开；日报仅制作者；
+// 高级访问者除日报/设置外全开，但明细数据由 Worker 端打码下发（内容字段 80% 加密、
+// 日期/品牌/状态类骨架字段保留，筛选照常；金额求和取 viewer_overview 快照）。
 // 普通访问者只开放业务总览（且总览是服务端算好的脱敏快照，见 renderOverview 的 viewer 分支）。
 // 数据级隔离在 Worker 端（trimForRole）：viewer 的 /api/all 不含任何原始明细数组。
 const PAGE_DENY = {
@@ -1396,6 +1398,14 @@ function renderOverview(){
     return;
   }
   const br = getBrand('overview');
+  // 高级访问者：明细金额已打码，求和算不出 → 金额类数值取服务端脱敏快照（固定本月口径，不随日期范围）
+  const isAdv = window.YP_ROLE==='advanced';
+  const vo = isAdv ? D.viewer_overview : null;
+  const advAmt = brand=>{
+    if(!vo) return '***';
+    if(brand){ const row=(vo.brands||[]).find(b=>b.brand===brand); return row?row.amount:'***'; }
+    return vo.stats&&vo.stats[1]?vo.stats[1].value:'***';
+  };
   const adsWithGroup = D.ads.filter(a=>{ if(!(a.group)) return false; if(br&&a.brand!==br) return false; return inRange('overview',a.pay_time); });
   const total = adsWithGroup.filter(isPaid).reduce((s,a)=>s+num(a.amount),0);
   const rvs = D.reviews.filter(r=>{ if(br&&r.brand!==br) return false; return inRange('overview',r.date); });
@@ -1406,7 +1416,8 @@ function renderOverview(){
   const issues = rvs.filter(r=>r.has_issue==='有').length + kws.filter(kwIsRisk).length;
   const kwPend = kws.filter(kwIsEmpty).length;  // 业务总览「关键词待处理」= 状态空白的数量（2026-06-10 用户改；与监控页/日报「待处理=处理中/其他」不同口径）
   document.getElementById('statsGrid').innerHTML = [
-    ['收款广告数',adsWithGroup.length,'','ads'],['收款金额',total.toLocaleString(),'','ads'],
+    ['收款广告数',adsWithGroup.length,'','ads'],
+    isAdv?['收款金额(本月)',esc(advAmt(br)),'','ads']:['收款金额',total.toLocaleString(),'','ads'],
     ['广告到期',expiredAds,expiredAds>0?'warn':'','expire'],['检查总量',reviewTotal,'','check'],
     ['审查台账',rvs.length,'','rvs'],['关键词',kws.length,'','kws'],
     ['发现问题',issues,issues>0?'warn':'ok','issues'],['关键词待处理',kwPend,kwPend>0?'warn':'','kwpend'],
@@ -1434,7 +1445,8 @@ function renderOverview(){
     const issCell = iss>0
       ? `<button type="button" class="cellb danger" data-k="issues" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${iss}个</button>`
       : b('无','b-g');
-    return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${cellb(brGrp.length,'ads')}</td><td style="color:var(--accent);font-weight:600">${amt.toLocaleString()}</td><td>${reviewCnt}</td><td>${cellb(brv.length,'rvs')}</td><td>${cellb(brk.length,'kws')}</td><td>${coverSet.size}</td><td>${issCell}</td></tr>`;
+    const amtCell = isAdv ? `<span title="本月口径 · 已脱敏">${esc(advAmt(brand))}</span>` : amt.toLocaleString();
+    return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${cellb(brGrp.length,'ads')}</td><td style="color:var(--accent);font-weight:600">${amtCell}</td><td>${reviewCnt}</td><td>${cellb(brv.length,'rvs')}</td><td>${cellb(brk.length,'kws')}</td><td>${coverSet.size}</td><td>${issCell}</td></tr>`;
   }).join('');
   document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -2011,8 +2023,9 @@ function renderFocus(){
     {name:'中风险',bg:'#fef3c7',head:'#fcd34d'},  // 淡黄
     {name:'低风险',bg:'#dcfce7',head:'#86efac'}   // 淡绿（含待打款及其它有备注）
   ];
-  const overdueRiskIdx=remark=>{
-    const s=(remark||'').trim();
+  const overdueRiskIdx=r=>{
+    if(r.od_risk!=null) return r.od_risk;  // 高级访问者：备注已打码，风险级由服务端按备注原文判定后随行下发
+    const s=(r.remark||'').trim();
     if(!s) return 0;
     if(/补量中|补时中|沟通中/.test(s)) return 1;
     return 2;
@@ -2045,7 +2058,7 @@ function renderFocus(){
   document.getElementById('focusOverdueCnt').textContent=`共 ${overdueList.length} 条`;
   // 按高/中/低风险分三段，每段前加一行风险名称（组内仍按到期日升序）
   const buckets=[[],[],[]];
-  overdueList.forEach(([r,d])=>buckets[overdueRiskIdx(r.remark)].push([r,d]));
+  overdueList.forEach(([r,d])=>buckets[overdueRiskIdx(r)].push([r,d]));
   let html='';
   buckets.forEach((list,i)=>{
     if(!list.length) return;
