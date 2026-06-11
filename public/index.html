@@ -157,28 +157,29 @@ body.day .ink-bg{opacity:.94}
 /* 普通访问者「示例数据」横幅：常驻 topbar 之下、横跨全宽，用户要求非常醒目 */
 #demoBanner{display:none;padding:13px 20px;text-align:center;font-size:21px;font-weight:800;letter-spacing:3px;color:#7c2d12;background:repeating-linear-gradient(45deg,#fbbf24 0 26px,#f59e0b 26px 52px);border-bottom:2px solid #b45309;text-shadow:0 1px 0 rgba(255,255,255,.5);flex-shrink:0}
 #demoBanner small{display:block;font-size:13px;font-weight:600;letter-spacing:1px;margin-top:3px;color:#92400e;text-shadow:none}
-.sidebar{width:190px;background:var(--bg-panel);border-right:1px solid var(--border);
-  flex-shrink:0;padding:12px 0;overflow-y:auto;transition:background .5s,border-color .5s}
-.nav-lbl{font-size:11px;font-weight:600;color:var(--text-faint);letter-spacing:1px;
-  padding:0 14px 6px;text-transform:uppercase}
-.nav-item{display:flex;align-items:center;gap:9px;padding:10px 14px;
-  cursor:pointer;color:var(--text-muted);font-size:14px;
-  border-left:3px solid transparent;transition:all .15s}
-.nav-item:hover{background:var(--bg-hover);color:var(--text-secondary)}
-.nav-item.on{background:var(--bg-hover);color:var(--accent);border-left-color:var(--accent)}
-.nav-ico{font-size:16px;flex-shrink:0}
-.nav-short{display:none}
-.nav-cnt{margin-left:auto;background:var(--brand-bg);color:var(--text-muted);font-size:11px;
-  font-weight:600;border-radius:10px;padding:1px 6px;min-width:22px;text-align:center}
-.nav-item.on .nav-cnt{background:var(--accent-dim);color:var(--accent)}
-.nav-group-hdr{display:flex;align-items:center;gap:9px;padding:10px 14px;
-  cursor:pointer;color:var(--text-muted);font-size:14px;
-  border-left:3px solid transparent;transition:all .15s}
-.nav-group-hdr:hover{background:var(--bg-hover);color:var(--text-secondary)}
-.nav-caret{margin-left:auto;font-size:11px;transition:transform .15s}
-.nav-group.open .nav-caret{transform:rotate(90deg)}
-.nav-group-body{display:none}
-.nav-group.open .nav-group-body{display:block}
+/* ── 首页导航大卡片（2026-06-11 重构：撤掉左侧导航，模块做成大卡片 4 列平铺，
+      点卡片进入模块页，模块页平铺整版、左上角返回） ── */
+.home-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1320px;margin:22px auto;padding:0 6px}
+.home-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  min-height:158px;border-radius:16px;cursor:pointer;user-select:none;
+  background:var(--bg-card);border:1px solid var(--border);
+  box-shadow:0 8px 30px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:transform .15s,box-shadow .25s,border-color .25s}
+.home-card:hover{transform:translateY(-4px);border-color:var(--border-hover);
+  box-shadow:0 14px 40px rgba(0,0,0,.3),0 0 26px var(--accent-dim)}
+.home-card:active{transform:translateY(-1px)}
+.hc-ico{font-size:36px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25))}
+.hc-name{font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:1px}
+.nav-cnt{position:absolute;top:10px;right:12px;background:var(--brand-bg);color:var(--text-muted);
+  font-size:11px;font-weight:600;border-radius:10px;padding:2px 8px;min-width:22px;text-align:center}
+/* 模块页左上角返回按钮 */
+.back-bar{margin:0 0 10px}
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:10px;
+  border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);
+  font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:all .15s}
+.back-btn:hover{border-color:var(--border-hover);color:var(--accent);box-shadow:0 0 14px var(--accent-dim)}
 
 /* ── 内容 ── */
 .content{flex:1;overflow-y:auto;padding:16px}
@@ -403,27 +404,9 @@ code.adno{color:var(--accent);font-size:12px;font-family:monospace}
   -webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);
 }
 .topbar{box-shadow:inset 0 -1px 0 rgba(255,255,255,.04),0 6px 28px rgba(0,0,0,.35)}
-/* 导航栏：用与主背景【完全相同】的画作侧栏背景，且 background-attachment:fixed 以视口为基准，
-   于是画面从导航栏连贯流进主区，中间只保留原有的分割线。上方叠一层遮罩做可读性 + 亮度匹配。 */
-.sidebar{
-  background-image:linear-gradient(180deg,rgba(7,9,18,0.46),rgba(7,9,18,0.30)),url(/fuchun-tile.jpg);
-  background-size:cover,auto 100%;
-  background-position:center,center;
-  background-repeat:no-repeat,repeat-x;
-  background-attachment:fixed,fixed;
-}
-body.day .sidebar{
-  background-image:linear-gradient(180deg,rgba(255,255,255,0.42),rgba(255,255,255,0.26)),url(/fuchun-tile.jpg);
-}
-/* 导航文字加深 + 投影，在山水画上清晰可读 */
-.nav-item,.nav-group-hdr{color:var(--text-primary);font-weight:600}
-.nav-item:hover,.nav-group-hdr:hover{color:var(--text-primary)}
 /* 字体加粗加深：主区表格正文/表头，在山水画背景上更清晰 */
 table.dt tbody td{font-weight:600}
 table.dt thead th{font-weight:700;color:var(--text-secondary)}
-.nav-lbl{color:var(--text-secondary)}
-.sidebar .nav-item,.sidebar .nav-group-hdr,.sidebar .nav-lbl,.sidebar .nav-cnt{text-shadow:0 1px 3px rgba(0,0,0,.6)}
-body.day .sidebar .nav-item,body.day .sidebar .nav-group-hdr,body.day .sidebar .nav-lbl,body.day .sidebar .nav-cnt{text-shadow:0 1px 2px rgba(255,255,255,.65)}
 /* 渐变发光标题 */
 .top-title{
   background:linear-gradient(90deg,#8b9cff,#5ad1ff 48%,#c08bff);
@@ -453,9 +436,6 @@ body.day .pf,body.day .scard{background:rgba(255,255,255,0.28)}
 .kwc.pending{box-shadow:0 8px 24px rgba(251,191,36,.38)}
 .kwc.done{box-shadow:0 8px 24px rgba(34,197,94,.42)}
 .kwc:hover{transform:translateY(-2px)}
-/* 导航高亮辉光 */
-.nav-item.on{box-shadow:inset 0 0 22px rgba(139,156,255,.14)}
-.nav-item.on .nav-ico{filter:drop-shadow(0 0 6px rgba(139,156,255,.7))}
 /* 按钮 / 输入 辉光 */
 .qbtn.on,.qbtn:hover,.qbtn-ok{box-shadow:0 0 14px rgba(139,156,255,.5)}
 .sync-btn:hover,.theme-btn:hover{box-shadow:0 0 14px rgba(139,156,255,.35)}
@@ -479,33 +459,10 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
   .sync-btn{padding:4px 8px;font-size:12px}
   #themeLabel{display:none}
   .layout{display:flex;flex-direction:column;height:calc(100vh - 46px);overflow:hidden}
-  .sidebar{width:100% !important;height:50px;flex-shrink:0;
-    display:flex !important;flex-direction:row;
-    overflow:visible;padding:0;
-    border-right:none;border-bottom:1px solid var(--border);position:relative}
-  .nav-lbl{display:none}
-  .nav-item,.nav-group-hdr{flex:none !important;width:calc(100% / 7) !important;
-    flex-direction:column;align-items:center;justify-content:center;
-    padding:4px 2px;gap:2px;
-    border-left:none;border-bottom:3px solid transparent;
-    font-size:10px;text-align:center;white-space:nowrap;overflow:hidden}
-  .nav-item.on{border-left-color:transparent !important;border-bottom-color:var(--accent);
-    background:var(--bg-hover);color:var(--accent)}
-  .nav-group{display:flex;width:calc(100% / 7) !important}
-  .nav-group-hdr{width:100% !important}
-  .nav-caret{display:none}
-  .nav-group.open .nav-group-body{display:flex;position:absolute;top:50px;right:0;z-index:30;
-    flex-direction:column;background:var(--bg-panel);border:1px solid var(--border);
-    border-radius:0 0 8px 8px;box-shadow:0 6px 16px rgba(0,0,0,.25);overflow:hidden}
-  .nav-group.open .nav-item{flex-direction:row;width:auto !important;
-    justify-content:flex-start;padding:10px 16px;gap:9px;font-size:14px;
-    border-bottom:none}
-  .nav-group.open .nav-item .nav-short{display:none}
-  .nav-group.open .nav-item .nav-full{display:inline}
-  .nav-ico{font-size:19px}
-  .nav-cnt{display:none}
-  .nav-full{display:none}
-  .nav-short{display:inline}
+  .home-grid{grid-template-columns:repeat(2,1fr);gap:10px;margin:10px auto}
+  .home-card{min-height:110px}
+  .hc-ico{font-size:28px}
+  .hc-name{font-size:14px}
   .content{flex:1;overflow-y:auto;overflow-x:visible;padding:10px;-webkit-overflow-scrolling:touch}
   .pf{gap:6px;padding:8px 10px}
   .pf-div{display:none}
@@ -549,56 +506,55 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
 <div id="demoBanner">⚠️ 示例数据 ⚠️<small>当前为演示视图 · 页面中所有内容均为虚拟示例，并非真实业务数据</small></div>
 
 <div class="layout">
-  <div class="sidebar">
-    <div class="nav-lbl">导航</div>
-    <div class="nav-item on" data-page="overview" onclick="nav(this)">
-      <span class="nav-ico">📊</span><span class="nav-full">业务总览</span><span class="nav-short">总览</span>
-    </div>
-    <div class="nav-item" data-page="report" onclick="nav(this)">
-      <span class="nav-ico">📰</span><span class="nav-full">日报</span><span class="nav-short">日报</span>
-    </div>
-    <div class="nav-item" data-page="ads" onclick="nav(this)">
-      <span class="nav-ico">📋</span><span class="nav-full">广告明细</span><span class="nav-short">广告</span>
-      <span class="nav-cnt" id="cnt-ads">-</span>
-    </div>
-    <div class="nav-item" data-page="reviews" onclick="nav(this)">
-      <span class="nav-ico">🔍</span><span class="nav-full">审查台帐</span><span class="nav-short">审查</span>
-      <span class="nav-cnt" id="cnt-reviews">-</span>
-    </div>
-    <div class="nav-item" data-page="keywords" onclick="nav(this)">
-      <span class="nav-ico">🔑</span><span class="nav-full">关键词监控</span><span class="nav-short">关键词</span>
-      <span class="nav-cnt" id="cnt-kw">-</span>
-    </div>
-    <div class="nav-item" data-page="focus" onclick="nav(this)">
-      <span class="nav-ico">⭐</span><span class="nav-full">今日关注</span><span class="nav-short">关注</span>
-      <span class="nav-cnt" id="cnt-focus">-</span>
-    </div>
-    <div class="nav-group" id="nav-group-more">
-      <div class="nav-group-hdr" onclick="toggleNavGroup()">
-        <span class="nav-ico">📁</span><span class="nav-full">更多</span><span class="nav-short">更多</span>
-        <span class="nav-caret">▸</span>
-      </div>
-      <div class="nav-group-body">
-        <div class="nav-item" data-page="tasks" onclick="nav(this)">
-          <span class="nav-ico">✅</span><span class="nav-full">任务清单</span><span class="nav-short">任务</span>
+  <div class="content">
+
+    <!-- 首页：模块导航大卡片（2026-06-11 重构：撤掉左侧导航栏），4 列平铺，点卡片进入模块页 -->
+    <div class="page on" id="page-home">
+      <div class="home-grid">
+        <div class="home-card" data-page="overview" onclick="openPage('overview')">
+          <span class="hc-ico">📊</span><span class="hc-name">业务总览</span>
+        </div>
+        <div class="home-card" data-page="report" onclick="openPage('report')">
+          <span class="hc-ico">📰</span><span class="hc-name">日报</span>
+        </div>
+        <div class="home-card" data-page="ads" onclick="openPage('ads')">
+          <span class="hc-ico">📋</span><span class="hc-name">广告明细</span>
+          <span class="nav-cnt" id="cnt-ads">-</span>
+        </div>
+        <div class="home-card" data-page="reviews" onclick="openPage('reviews')">
+          <span class="hc-ico">🔍</span><span class="hc-name">审查台帐</span>
+          <span class="nav-cnt" id="cnt-reviews">-</span>
+        </div>
+        <div class="home-card" data-page="keywords" onclick="openPage('keywords')">
+          <span class="hc-ico">🔑</span><span class="hc-name">关键词监控</span>
+          <span class="nav-cnt" id="cnt-kw">-</span>
+        </div>
+        <div class="home-card" data-page="focus" onclick="openPage('focus')">
+          <span class="hc-ico">⭐</span><span class="hc-name">今日关注</span>
+          <span class="nav-cnt" id="cnt-focus">-</span>
+        </div>
+        <div class="home-card" data-page="tasks" onclick="openPage('tasks')">
+          <span class="hc-ico">✅</span><span class="hc-name">任务清单</span>
           <span class="nav-cnt" id="cnt-tasks">-</span>
         </div>
-        <div class="nav-item" data-page="ai" onclick="nav(this)">
-          <span class="nav-ico">🤖</span><span class="nav-full">AI成效</span><span class="nav-short">AI</span>
+        <div class="home-card" data-page="ai" onclick="openPage('ai')">
+          <span class="hc-ico">🤖</span><span class="hc-name">AI成效</span>
           <span class="nav-cnt" id="cnt-ai">-</span>
         </div>
         <!-- 设置：三种身份都可见；页面内容按 window.YP_ROLE 区分（非制作者显示无访问权限），服务端接口另有校验 -->
-        <div class="nav-item" data-page="settings" onclick="nav(this)">
-          <span class="nav-ico">⚙️</span><span class="nav-full">设置</span><span class="nav-short">设置</span>
+        <div class="home-card" data-page="settings" onclick="openPage('settings')">
+          <span class="hc-ico">⚙️</span><span class="hc-name">设置</span>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="content">
+    <!-- 模块页左上角返回首页按钮（首页时隐藏） -->
+    <div class="back-bar" id="backBar" style="display:none">
+      <button type="button" class="back-btn" onclick="goHome()">← 返回首页</button>
+    </div>
 
     <!-- 业务总览 -->
-    <div class="page on" id="page-overview">
+    <div class="page" id="page-overview">
       <div class="pf">
         <span class="pf-lbl">时间：</span>
         <div class="qbtn-g" id="ov-qbtns">
@@ -1256,7 +1212,7 @@ function autoThemeCheck(){
 // 状态 & 工具函数
 // ══════════════════════════════════════════════════════
 const EMPTY = { updated_at:'', sheet_count:0, ads:[], reviews:[], keywords:[], tasks:[], ai_items:[] };
-let D = null, page = 'overview';
+let D = null, page = 'home';
 const PF = {
   overview:{s:null,e:null,preset:'month'},
   report:  {s:null,e:null,preset:'today'},
@@ -1466,7 +1422,6 @@ function fillBrandBoxes(pre,title,cols,icon,msg,rows,rowFn,cntHtml){
   }
 }
 
-function toggleNavGroup(){ document.getElementById('nav-group-more')?.classList.toggle('open'); }
 // 页面权限（与 window.YP_ROLE 配合）：制作者全开；日报仅制作者；设置页另由 set-panel/set-denied 控制（仅制作者）。
 // 高级访问者除日报/设置外全开，但明细数据由 Worker 端打码下发（品牌/金额/备注/广告类型/汇总分析全量打码，
 // 其余内容字段 80% 加密、日期/状态类骨架字段保留，筛选照常；金额求和取 viewer_overview 快照）。
@@ -1477,13 +1432,16 @@ const PAGE_DENY = {
 };
 function pageAllowed(pg){ const d=PAGE_DENY[pg]; return !(d && d.includes(window.YP_ROLE)); }
 
-function nav(el){
-  page = el.dataset.page;
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on')); el.classList.add('on');
+// 首页大卡片 → 模块页跳转（2026-06-11 重构：撤掉左侧导航）；模块页平铺整版，左上角返回首页
+function openPage(pg){
+  page = pg;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.getElementById(pageAllowed(page) ? 'page-'+page : 'page-denied')?.classList.add('on');
-  renderPage(page);
+  document.getElementById(pageAllowed(pg) ? 'page-'+pg : 'page-denied')?.classList.add('on');
+  document.getElementById('backBar').style.display = pg==='home' ? 'none' : '';
+  const c=document.querySelector('.content'); if(c) c.scrollTop=0;
+  renderPage(pg);
 }
+function goHome(){ openPage('home'); }
 function renderPage(pg){
   if(!pageAllowed(pg)) return;
   if(!D) return;
@@ -2332,7 +2290,7 @@ document.getElementById(window.YP_ROLE==='owner'?'set-panel':'set-denied').style
 // 普通访问者：常驻醒目的「示例数据」横幅（数据本身是服务端写死的虚拟示例）
 if(window.YP_ROLE==='viewer') document.getElementById('demoBanner').style.display='';
 // 受限模块的导航计数徽章对受限身份隐藏（数字本身也是信息）
-Object.keys(PAGE_DENY).forEach(pg=>{ if(!pageAllowed(pg)){ const c=document.querySelector(`.nav-item[data-page="${pg}"] .nav-cnt`); if(c) c.style.display='none'; } });
+Object.keys(PAGE_DENY).forEach(pg=>{ if(!pageAllowed(pg)){ const c=document.querySelector(`.home-card[data-page="${pg}"] .nav-cnt`); if(c) c.style.display='none'; } });
 initPresets();
 applyTheme(isDay(), true);
 autoThemeCheck();
