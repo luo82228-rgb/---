@@ -107,13 +107,15 @@ export function buildViewerOverview(data: OverviewInput): ViewerOverview {
 
 type Row = Record<string, unknown>;
 
-const ADV_MASK_FIELDS: Record<string, { unique: string[]; plain: string[] }> = {
-  // unique：参与编号反查/下钻分组/覆盖群去重的字段；plain：纯展示的内容字段
-  ads:      { unique: ['ad_no', 'group'],  plain: ['biz_name', 'amount', 'recorder', 'remark'] },
-  reviews:  { unique: ['ad_no'],           plain: ['target', 'reviewer', 'issue_desc', 'ad_amount', 'summary'] },
-  keywords: { unique: ['no', 'source'],    plain: ['sender', 'keyword', 'content', 'ai_analysis', 'reviewer', 'remark'] },
-  tasks:    { unique: [],                  plain: ['task_name', 'reviewer', 'progress', 'milestone', 'remark'] },
-  ai_items: { unique: ['flow_no'],         plain: ['flow_name', 'summary', 'reviewer', 'input', 'output', 'steps', 'tools', 'save_time', 'remark'] },
+// 打码强度（2026-06-11 用户定）：品牌、金额、备注、广告类型 → 全量打码（整串 *）；
+// 其余内容字段 → 80% 打码（保留约 20% 明文头）。
+// unique*：参与筛选/编号反查/下钻分组/去重的连接键，要走防碰撞打码保证不同原文掩码不同。
+const ADV_MASK_FIELDS: Record<string, { unique: string[]; fullUnique: string[]; full: string[]; plain: string[] }> = {
+  ads:      { unique: ['ad_no', 'group'], fullUnique: ['brand'], full: ['amount', 'remark', 'ad_type'], plain: ['biz_name', 'recorder'] },
+  reviews:  { unique: ['ad_no'],          fullUnique: ['brand'], full: ['ad_amount'],                   plain: ['target', 'reviewer', 'issue_desc', 'summary'] },
+  keywords: { unique: ['no', 'source'],   fullUnique: ['brand'], full: ['remark'],                      plain: ['sender', 'keyword', 'content', 'ai_analysis', 'reviewer'] },
+  tasks:    { unique: [],                 fullUnique: [],        full: ['remark'],                      plain: ['task_name', 'reviewer', 'progress', 'milestone'] },
+  ai_items: { unique: ['flow_no'],        fullUnique: [],        full: ['remark'],                      plain: ['flow_name', 'summary', 'reviewer', 'input', 'output', 'steps', 'tools', 'save_time'] },
 };
 
 /** 文本打码：同 mask 的 80% 风格，但明文头最多 6 字符、星号最多 24 个（几百字的消息/备注不泄露长前缀、也不撑爆单元格） */
@@ -123,16 +125,21 @@ function maskText(s: string): string {
   return s.slice(0, vis) + '*'.repeat(Math.min(s.length - vis, 24));
 }
 
+/** 全量打码：整串替换为 *（星号最多 24 个） */
+function maskFull(s: string): string {
+  return '*'.repeat(Math.min(s.length, 24));
+}
+
 /** 就地打码整个 /api/all 载荷（仅高级访问者）。须在 buildViewerOverview 之后调用——快照要用原文算。 */
 export function maskDataForAdvanced(data: Record<string, unknown>): void {
-  // 防碰撞打码：同一原文 → 同一掩码（编号反查、群去重语义不变）；
-  // 不同原文若掩码撞车（如连续编号 YP-001/YP-002 都变 Y*****），尾部补 * 区分
+  // 防碰撞打码：同一原文 → 同一掩码（品牌筛选、编号反查、群去重语义不变）；
+  // 不同原文若掩码撞车（如连续编号 YP-001/YP-002 都变 Y*****、同长品牌名全星后相同），尾部补 * 区分
   const memo = new Map<string, string>();
   const taken = new Set<string>();
-  const maskUnique = (s: string): string => {
+  const maskUnique = (s: string, base: (v: string) => string): string => {
     const hit = memo.get(s);
     if (hit !== undefined) return hit;
-    let out = maskText(s);
+    let out = base(s);
     while (taken.has(out)) out += '*';
     memo.set(s, out);
     taken.add(out);
@@ -152,8 +159,21 @@ export function maskDataForAdvanced(data: Record<string, unknown>): void {
     const rows = data[key];
     if (!Array.isArray(rows)) continue;
     for (const r of rows as Row[]) {
-      for (const f of fields.unique) if (r[f]) r[f] = maskUnique(String(r[f]));
+      for (const f of fields.unique) if (r[f]) r[f] = maskUnique(String(r[f]), maskText);
+      for (const f of fields.fullUnique) if (r[f]) r[f] = maskUnique(String(r[f]), maskFull);
+      for (const f of fields.full) if (r[f]) r[f] = maskFull(String(r[f]));
       for (const f of fields.plain) if (r[f]) r[f] = maskText(String(r[f]));
+    }
+  }
+
+  // 脱敏快照同步处理：品牌名要和明细行同掩码（前端按 brand 匹配快照取金额），
+  // 金额类数值改全量打码（不然 advanced 还能从快照看到 20% 明文头）
+  const vo = data.viewer_overview as ViewerOverview | undefined;
+  if (vo) {
+    for (const st of vo.stats) if (st.label === '收款金额') st.value = maskFull(st.value);
+    for (const b of vo.brands) {
+      b.amount = maskFull(b.amount);
+      b.brand = maskUnique(b.brand, maskFull);
     }
   }
 }
