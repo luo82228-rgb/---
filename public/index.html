@@ -382,6 +382,9 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .cellb.danger:hover{background:#ef4444;color:#fff;border-color:#ef4444}
 .cellb.zero{border-color:var(--border);color:var(--text-muted);background:transparent}  /* 0 值也可点（弹空明细），仅样式淡化 */
 .cellb.zero:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.bizclk{cursor:pointer;display:inline-block;transition:transform .12s}
+.bizclk:hover{transform:translateY(-1px)}
+.bizclk:hover .b{box-shadow:0 0 10px var(--accent-dim);filter:brightness(1.15)}
 /* 商务状态监测的血量条：绿=得分占比，扣分部分露出红底 */
 .hpbar{width:140px;height:13px;border-radius:8px;background:linear-gradient(90deg,#ef4444,#dc2626);overflow:hidden;border:1px solid rgba(0,0,0,.3);box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
 .hpbar .hp{height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:8px 0 0 8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35);transition:width .4s ease}
@@ -1607,12 +1610,15 @@ function renderOverview(){
   document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
   renderBizMon(br);
 }
-// ── 商务状态监测（2026-06-11 加，品牌汇总下方；同日按用户反馈改版 v2）──
+// ── 商务状态监测（2026-06-11 加，品牌汇总下方；同日按用户反馈迭代到 v3）──
 // 只统计配色名单内的商务（bizNamed，灰徽标=名单外不进表）；受品牌筛选、不随总览日期范围。
-// 在投=未下架；超期=在投且到期日<今天；得分(100)=收款率×60+超期处理×40
-//（超期处理=1-无备注超期/超期数，无超期满分；收款率=isPaid 含已下架）。
+// 得分=扣分制（用户定）：人人默认满分 100，按 BIZ_DEDUCTIONS 逐项扣减；扣分项待用户确定，
+// 目前数组为空 ⇒ 全员 100 分/S 级/血条全绿/K线平线，属预期现状不是 bug。
 // 状态情况=血量条：绿色=得分占比，扣分部分露出红底；评级 S=100/A≥90/B≥80/C≥70/D<70；
-// 月度趋势=K线图（数据源=每月得分，开盘=上月得分收盘=本月，红涨绿跌，无数据月灰色平线）。
+// 月度趋势=K线图（数据源=每月得分，开盘=上月得分收盘=本月，红涨绿跌，无数据月跳过）；
+// 商务花名徽标可点击 → 85vw 模态弹「发现问题明细」（审查台账 target 含该商务且 has_issue=有）。
+// 扣分项配置：[名称, (该商务广告数组,辅助统计)=>扣分数]，总分=max(0,100-Σ)。待用户给规则后填入。
+const BIZ_DEDUCTIONS=[];
 function renderBizMon(br){
   const t0=today0(), tv=t0.getFullYear()*10000+t0.getMonth()*100+t0.getDate();
   const ads=D.ads.filter(a=>a.group&&(!br||a.brand===br)&&bizNamed(a.biz_name));
@@ -1625,9 +1631,9 @@ function renderBizMon(br){
     const live=arr.filter(a=>!(a.pay_status||'').includes('已下架'));
     const overdue=live.filter(a=>{ const d=parseDate(a.expire_time); return d&&d.getFullYear()*10000+d.getMonth()*100+d.getDate()<tv; });
     const odBad=overdue.filter(a=>!(a.remark||'').trim()).length;
-    const payRate=arr.filter(isPaid).length/arr.length;
-    const odOk=overdue.length?1-odBad/overdue.length:1;
-    return {score:Math.round(payRate*60+odOk*40),live:live.length,overdue:overdue.length,odBad};
+    const stats={live:live.length,overdue:overdue.length,odBad};
+    const ded=BIZ_DEDUCTIONS.reduce((s,[,fn])=>s+fn(arr,stats),0);
+    return {score:Math.max(0,100-Math.round(ded)),...stats};
   };
   // K线：单值序列画蜡烛，open=上月得分 close=本月得分；红涨绿跌（股市惯例）；无数据月=灰色平线
   const kline=(scores)=>{
@@ -1655,13 +1661,15 @@ function renderBizMon(br){
     const grade=r.score>=100?['S','#f59e0b']:r.score>=90?['A','#22c55e']:r.score>=80?['B','#2563eb']:r.score>=70?['C','#eab308']:['D','#ef4444'];
     const tip=`得分 ${r.score}/100 · 在投 ${r.live} · 超期 ${r.overdue}${r.odBad?` · 无备注超期 ${r.odBad}`:''}`;
     return `<tr>
-    <td>${bizName(r.name)}</td>
+    <td><span class="bizclk" onclick="openBizIssues('${esc(r.name).replace(/'/g,"\\'")}')" title="点击查看该商务的发现问题明细">${bizName(r.name)}</span></td>
     <td><div class="hpbar" title="${esc(tip)}"><div class="hp" style="width:${r.score}%"></div></div></td>
     <td style="color:${grade[1]};font-weight:700">${r.score}</td>
     <td>${pill(grade[0],grade[1])}</td>
     <td>${kline(r.mScores)}</td>
   </tr>`;}).join(''):emptyRow(5,'👤','暂无商务数据');
 }
+// 商务花名点击 → 该商务的发现问题明细弹窗（复用总览卡片 85vw 模态，brand 位传商务名）
+function openBizIssues(name){ openCardModal('bizissues','',name); }
 // ── 品牌汇总单元格徽标的明细下拉 ──（按当前总览日期范围 + 该行品牌口径，与汇总数字一致）
 let _ovRow=null;
 function closeOvRow(){
@@ -1747,6 +1755,12 @@ function buildOvDetail(key,brand){
     const list=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('overview',k.log_time)&&kwIsEmpty(k));
     return head('关键词待处理（状态空白） '+list.length+' 条')+tbl(kwCols,list.map(kwRow));
   }
+  if(key==='bizissues'){
+    // 商务状态监测点商务花名：该商务名下的发现问题明细（审查台账 target=商务 #4，has_issue=有；
+    // 脱钩日期范围与品牌筛选——监测板块本身就不随日期；关键词无商务字段，不进此明细）
+    const list=D.reviews.filter(r=>r.has_issue==='有'&&String(r.target||'').includes(brand));
+    return head('发现问题明细 '+list.length+' 条')+tbl(rvCols,list.map(rvRow));
+  }
   if(key==='cover'){
     // 覆盖群相关广告（口径同品牌汇总「覆盖群」列）：审查(当前日期范围)按编号反查广告的对接群
     // + 关键词来源群整体去重；反查源与列出的广告都脱钩日期范围（同品牌汇总的 allBrandAds 思路）
@@ -1782,9 +1796,9 @@ function ovToggleRow(btn){
 // ── 业务总览卡片点击：整屏 75% 模态弹窗（明细口径同品牌汇总；无对应明细的卡片弹空）──
 function closeOv(){ closeOvRow(); closeCardModal(); }
 function closeCardModal(){ const m=document.getElementById('cardModal'); if(m) m.remove(); }
-function openCardModal(key,label){
+function openCardModal(key,label,brandArg){
   closeCardModal();
-  const br=getBrand('overview');
+  const br=brandArg!==undefined?brandArg:getBrand('overview');  // bizissues 借 brand 位传商务名
   const content = key ? buildOvDetail(key,br)
     : `<div class="op-hd"><span>${esc(br||'全部品牌')} · ${esc(label)}</span><button type="button" class="op-x" onclick="closeOv()">✕</button></div><div class="empty" style="padding:48px"><div class="et">暂无明细</div></div>`;
   const mask=document.createElement('div');
