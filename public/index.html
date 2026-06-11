@@ -248,7 +248,7 @@ body.day .ink-bg{opacity:.94}
 .clkcell:hover{background:var(--bg-hover)}
 /* 记录人 / 审查人员 用华文楷体 */
 .kaiti{font-family:"STKaiti","华文楷体","KaiTi","Kaiti SC",serif;font-weight:bold;font-size:14px}
-.note-ov{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px}
+.note-ov{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px}  /* 要压过 .cardmodal-mask(3000)：总览卡片模态里的备注/汇总分析也用这个弹窗 */
 .note-ov.on{display:flex}
 .note-box{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.4);max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column}
 .note-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:15px}
@@ -1186,7 +1186,11 @@ function showNote(el){
   document.getElementById('noteOv').classList.add('on');
 }
 function closeNote(){ document.getElementById('noteOv').classList.remove('on'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNote(); closeOv(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){
+  // 分层关闭：备注全文弹窗可能叠在卡片模态上面，开着时 Esc 只关它，再按一次才关下层
+  if(document.getElementById('noteOv').classList.contains('on')) return closeNote();
+  closeOv();
+} });
 const num = s => parseFloat(String(s||'').replace(/,/g,'')) || 0;
 
 function parseDate(s){
