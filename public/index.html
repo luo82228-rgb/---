@@ -162,13 +162,13 @@ body.day .ink-bg{opacity:.94}
 .home-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1320px;margin:22px auto;padding:0 6px}
 .home-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
   min-height:158px;border-radius:16px;cursor:pointer;user-select:none;
-  background-color:rgba(16,19,32,0.42);border:1px solid var(--border);  /* 透明度与模块页面板(.tbox)一致 */
-  background-image:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,0) 42%);  /* 顶部斜向高光，增立体 */
+  background-color:rgba(16,19,32,0.42);border:1px solid var(--border);  /* 透明度与模块页数据面板(.tbox)一致 */
+  background-image:linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,0) 42%);  /* 顶部斜向高光，增立体 */
   box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 14px 30px rgba(0,0,0,.34),0 3px 8px rgba(0,0,0,.22);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  /* 注意：不能加 backdrop-filter——数据面板没有毛玻璃，加了会糊成表头(--th-bg .92)那种致密感（用户验收指出） */
   transition:transform .18s,box-shadow .25s,border-color .25s}
 body.day .home-card{background-color:rgba(255,255,255,0.48);
-  background-image:linear-gradient(165deg,rgba(255,255,255,.55),rgba(255,255,255,0) 46%);
+  background-image:linear-gradient(165deg,rgba(255,255,255,.35),rgba(255,255,255,0) 46%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 14px 30px rgba(70,80,120,.18),0 3px 8px rgba(70,80,120,.12)}
 .home-card:hover{transform:translateY(-5px) scale(1.02);border-color:var(--border-hover);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 46px rgba(0,0,0,.42),0 0 30px var(--accent-dim)}
