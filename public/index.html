@@ -1634,29 +1634,34 @@ function renderBizMon(br){
     const overdue=live.filter(a=>{ const d=parseDate(a.expire_time); return d&&d.getFullYear()*10000+d.getMonth()*100+d.getDate()<tv; });
     return {live:live.length,overdue:overdue.length};
   };
-  // K线：单值序列画蜡烛，open=上月得分 close=本月得分；红涨绿跌（股市惯例）；无数据月=灰色平线
+  // 月度趋势：波浪状曲线（2026-06-11 用户从蜡烛图改）。平滑贝塞尔曲线串起 6 个月得分，
+  // 下方淡色渐变填充；数据点圆点配色沿用红涨绿跌（较上月升=红/降=绿/持平=灰），悬停看各月分
   const kline=(scores)=>{
-    const W=150,H=34,n=scores.length,cw=12,gap=(W-n*cw)/(n+1);
-    let prev=null,x=gap;
-    const parts=scores.map((v,i)=>{
-      const cur=v==null?prev:v;
-      if(cur==null){ x+=cw+gap; return ''; }
-      const open=prev==null?cur:prev;
-      const yTop=2+(1-Math.max(open,cur)/100)*(H-4);
-      const h=Math.max(2,Math.abs(cur-open)/100*(H-4));
-      const col=v==null?'#94a3b8':cur>open?'#ef4444':cur<open?'#22c55e':'#94a3b8';
-      const r=`<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${cw}" height="${h.toFixed(1)}" rx="1.5" fill="${col}"><title>${months[i]%100}月：${v==null?'无数据':'得分 '+v}</title></rect>`;
-      prev=cur; x+=cw+gap; return r;
-    });
-    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:middle">${parts.join('')}</svg>`;
+    const W=150,H=34,P=5;
+    const xs=scores.map((_,i)=>P+i*(W-2*P)/(scores.length-1));
+    const ys=scores.map(v=>P+(1-v/100)*(H-2*P));
+    let d=`M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
+    for(let i=1;i<xs.length;i++){
+      const mx=((xs[i-1]+xs[i])/2).toFixed(1);
+      d+=` C${mx},${ys[i-1].toFixed(1)} ${mx},${ys[i].toFixed(1)} ${xs[i].toFixed(1)},${ys[i].toFixed(1)}`;
+    }
+    const area=`${d} L${xs[xs.length-1].toFixed(1)},${H-1} L${xs[0].toFixed(1)},${H-1} Z`;
+    const dots=scores.map((v,i)=>{
+      const col=i===0||v===scores[i-1]?'#94a3b8':v>scores[i-1]?'#ef4444':'#22c55e';
+      return `<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="2.6" fill="${col}"><title>${months[i]%100}月：得分 ${v}</title></circle>`;
+    }).join('');
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:middle">`
+      +`<path d="${area}" style="fill:var(--accent-dim)"/>`
+      +`<path d="${d}" style="fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round"/>`
+      +dots+`</svg>`;
   };
   const list=Object.entries(by).map(([name,arr])=>{
     const stats=calc(arr);
     // 人工扣分按审查记录的审查日期归月；得分/血条/评级只看本月，K线看近6个月
     const dedByM={};
-    bizIssueList(name).forEach(({r,key:k})=>{
+    bizIssueList(name).all.forEach(({key:k,date})=>{
       const p=+BIZDED[k]||0; if(!p) return;
-      const d=parseDate(r.date); if(!d) return;
+      const d=parseDate(date); if(!d) return;   // 审查问题按审查日期、关键词按登记时间归月
       const m=d.getFullYear()*100+(d.getMonth()+1);
       dedByM[m]=(dedByM[m]||0)+p;
     });
@@ -1686,15 +1691,19 @@ async function loadBizDed(){
     if(d.success){ BIZDED=d.deductions||{}; if(page==='overview'&&D) renderOverview(); }
   }catch(e){ /* 拉不到就保持空映射，不阻塞页面 */ }
 }
-// 该商务的发现问题记录 + 稳定记录键（审查日期|品牌|广告编号|同组序号）。
-// ⚠️ 弹窗渲染和得分计算都走这里，保证键一致；上游改了日期/编号会让旧扣分失效（已知特性，告知过用户）
+// 该商务的发现问题记录 + 稳定记录键。弹窗渲染和得分计算都走这里，保证键一致。
+// 审查问题：target 含商务名匹配，键=审查日期|品牌|广告编号|同组序号（上游改这几个字段旧扣分会失效，已告知用户）；
+// 关键词风险（kwIsRisk）：无商务字段无法匹配 → 进【所有】商务的明细由用户人工判断扣谁（2026-06-11 用户定），
+// 键含商务名隔离归属（kw|商务|编号），同一条关键词给张三扣分不影响李四。
 function bizIssueList(name){
   const seen={};
-  return D.reviews.filter(r=>r.has_issue==='有'&&String(r.target||'').includes(name)).map(r=>{
+  const rvs=D.reviews.filter(r=>r.has_issue==='有'&&String(r.target||'').includes(name)).map(r=>{
     const base=`${r.date}|${r.brand}|${r.ad_no}`;
     const occ=seen[base]=(seen[base]||0)+1;
-    return {r,key:base+'|'+occ};
+    return {r,key:base+'|'+occ,date:r.date};
   });
+  const kws=D.keywords.filter(kwIsRisk).map(k=>({r:k,key:`kw|${name}|${k.no||k.log_time}`,date:k.log_time}));
+  return {rvs,kws,all:[...rvs,...kws]};
 }
 async function saveBizDed(btn){
   const set={};
@@ -1797,19 +1806,23 @@ function buildOvDetail(key,brand){
   }
   if(key==='bizissues'){
     // 商务状态监测点商务花名：该商务名下的发现问题明细 + 人工扣分列（2026-06-11 扣分制）。
-    // 记录键=审查日期|品牌|广告编号|序号（bizIssueList），扣分存 KV（/api/bizded，仅制作者可写）；
-    // 制作者见输入框+右下角确认，其他身份只读显示
-    const list=bizIssueList(brand);
+    // 两段：审查台账问题（target 匹配该商务）+ 关键词风险（无商务字段→所有商务都见，人工判断扣谁）；
+    // 扣分存 KV（/api/bizded，仅制作者可写），制作者见输入框+右下角 sticky 确认，其他身份只读显示
+    const {rvs:rvList,kws:kwList}=bizIssueList(brand);
     const isOwner=window.YP_ROLE==='owner';
-    const rows=list.map(({r,key:k})=>{
+    const dedCell=k=>{
       const p=+BIZDED[k]||0;
-      const cell=isOwner
+      return isOwner
         ?`<td><input type="number" class="ded-inp" data-key="${escA(k)}" min="0" max="100" step="1" value="${p||''}" placeholder="0"></td>`
         :`<td style="color:#ef4444;font-weight:700;text-align:center">${p||'-'}</td>`;
-      return rvRow(r).replace('</tr>',cell+'</tr>');
-    });
-    const foot=isOwner?`<div class="ded-foot"><span class="ded-hint">输入各条扣分（0 或留空 = 不扣），点确认立即生效并更新血条/得分/评级/K线</span><button type="button" class="qbtn qbtn-ok" onclick="saveBizDed(this)">确认</button></div>`:'';
-    return head('发现问题明细 '+list.length+' 条')+tbl([...rvCols,'扣分数'],rows)+foot;
+    };
+    const rvRows=rvList.map(({r,key:k})=>rvRow(r).replace('</tr>',dedCell(k)+'</tr>'));
+    const kwRows=kwList.map(({r,key:k})=>kwRow(r).replace('</tr>',dedCell(k)+'</tr>'));
+    const foot=isOwner?`<div class="ded-foot"><span class="ded-hint">输入各条扣分（0 或留空 = 不扣），点确认立即生效并更新血条/得分/评级/月度趋势</span><button type="button" class="qbtn qbtn-ok" onclick="saveBizDed(this)">确认</button></div>`:'';
+    return head('发现问题明细 '+(rvList.length+kwList.length)+' 条')
+      +`<div class="ovd-sub">审查台账问题 · ${rvList.length} 条</div>`+tbl([...rvCols,'扣分数'],rvRows)
+      +`<div class="ovd-sub">关键词风险 · ${kwList.length} 条（无商务字段，所有商务共见，由制作者人工判断扣谁的分）</div>`+tbl([...kwCols,'扣分数'],kwRows)
+      +foot;
   }
   if(key==='cover'){
     // 覆盖群相关广告（口径同品牌汇总「覆盖群」列）：审查(当前日期范围)按编号反查广告的对接群
