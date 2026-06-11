@@ -322,6 +322,11 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .cellb.danger:hover{background:#ef4444;color:#fff;border-color:#ef4444}
 .cellb.zero{border-color:var(--border);color:var(--text-muted);background:transparent}  /* 0 值也可点（弹空明细），仅样式淡化 */
 .cellb.zero:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* 广告明细/审查台账/关键词监控的品牌分段标题行（单 tbody 内分段折叠，同已超期风险分段机制） */
+.bs-head td{background:var(--th-bg);color:var(--text-primary);font-weight:700;font-size:13px;padding:8px 12px;cursor:pointer;user-select:none;border-top:1px solid var(--border)}
+.bs-head .bs-chev{display:inline-block;font-size:11px;transition:transform .2s;margin-right:6px}
+.bs-head.bs-collapsed .bs-chev{transform:rotate(-90deg)}
+.bs-head .bs-cnt{font-weight:400;color:var(--text-muted);margin-left:8px}
 .ovd-row>td{padding:0;border-bottom:1px solid var(--border)}
 .ovd-inner{padding:12px 16px;border-top:2px solid var(--accent);max-height:340px;overflow:auto;background:var(--bg-hover)}
 .ovd-inner .op-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--text-primary)}
@@ -1349,6 +1354,31 @@ function toast(msg, icon){
 }
 function emptyRow(cols,icon,msg){ return `<tr><td colspan="${cols}"><div class="empty"><div class="ei">${icon}</div><div class="et">${msg}</div></div></td></tr>`; }
 
+// ── 广告明细/审查台账/关键词监控按品牌分两段展示（2026-06-11 用户要求）──
+// 段标题「页面名-品牌　共 N 条」，可折叠；品牌升序排（逸品在上、逸品孵化在下，
+// advanced 的打码品牌 **/**** 和 viewer 的示例品牌A/B 同样成立）。
+// 单 tbody 内分段折叠（同已超期风险分段思路，与整框折叠 toggleBox 是两套机制）；
+// 折叠状态记在全局 Set（key=页面|品牌），筛选变化、60 秒轮询重渲染都不丢。
+const bsCollapsed=new Set();
+function brandSections(pg,title,cols,rows,rowFn){
+  const brands=[...new Set(rows.map(r=>r.brand))].filter(Boolean).sort();
+  if(rows.some(r=>!r.brand)) brands.push('');   // 没标品牌的行兜底归到最后一段
+  if(!brands.length) return rows.map(rowFn).join('');
+  return brands.map((b,i)=>{
+    const list=rows.filter(r=>(r.brand||'')===(b||''));
+    const key=pg+'|'+(b||'其他'), collapsed=bsCollapsed.has(key);
+    const hide=collapsed?' style="display:none"':'';
+    return `<tr class="bs-head${collapsed?' bs-collapsed':''}" data-bs="${i}" data-key="${escA(key)}" onclick="toggleBrandSec(this)"><td colspan="${cols}"><span class="bs-chev">▼</span>${esc(title)}-${esc(b||'其他')}<span class="bs-cnt">共 ${list.length} 条</span></td></tr>`
+      + list.map(r=>rowFn(r).replace('<tr>',`<tr class="bs-row-${i}"${hide}>`)).join('');
+  }).join('');
+}
+function toggleBrandSec(tr){
+  const collapse=!tr.classList.contains('bs-collapsed');
+  tr.classList.toggle('bs-collapsed',collapse);
+  if(collapse) bsCollapsed.add(tr.dataset.key); else bsCollapsed.delete(tr.dataset.key);
+  tr.closest('tbody').querySelectorAll('.bs-row-'+tr.dataset.bs).forEach(r=>r.style.display=collapse?'none':'');
+}
+
 function toggleNavGroup(){ document.getElementById('nav-group-more')?.classList.toggle('open'); }
 // 页面权限（与 window.YP_ROLE 配合）：制作者全开；日报仅制作者；设置页另由 set-panel/set-denied 控制（仅制作者）。
 // 高级访问者除日报/设置外全开，但明细数据由 Worker 端打码下发（品牌/金额/备注/广告类型/汇总分析全量打码，
@@ -1843,7 +1873,7 @@ function renderAds(){
     return esc(f(dateStr));
   }
   document.getElementById('adsCnt').textContent = `共 ${rows.length} 条`;
-  document.getElementById('adsTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+  document.getElementById('adsTb').innerHTML = rows.length ? brandSections('ads','广告明细',12,rows,r=>`<tr>
     <td><code class="adno">${esc(r.ad_no)}</code></td>
     <td><span class="brand">${esc(r.brand)}</span></td>
     <td>${bizName(r.biz_name)}</td>
@@ -1853,7 +1883,7 @@ function renderAds(){
     <td>${bPay(r.pay_status)}</td><td>${esc(f(r.pay_time))}</td>
     <td>${expireTag(r.expire_time)}</td><td class="kaiti">${esc(f(r.recorder))}</td>
     ${clkCell(r.remark,'备注','wrap')}
-  </tr>`).join('') : emptyRow(12,'📋','暂无符合条件的广告数据');
+  </tr>`) : emptyRow(12,'📋','暂无符合条件的广告数据');
 }
 
 // 审查台账卡片弹窗 + 编号下钻（口径见语义文件 #11 审查版；下钻主键为广告编号 ad_no）
@@ -1923,7 +1953,7 @@ function renderReviews(){
   const rvCntEl=document.getElementById('rvCnt');
   if(rvPick.size) rvCntEl.innerHTML=`仅显示 ${rvPick.size} 个编号 <b>${[...rvPick].map(esc).join('、')}</b> <button class="qbtn" onclick="clearRvPick()">显示全部</button>`;
   else rvCntEl.textContent = `共 ${rows.length} 条`;
-  document.getElementById('rvTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+  document.getElementById('rvTb').innerHTML = rows.length ? brandSections('reviews','审查台账',13,rows,r=>`<tr>
     <td>${esc(f(r.date))}</td><td><span class="brand">${esc(r.brand)}</span></td>
     <td>${bizName(r.target)}</td><td class="kaiti">${esc(f(r.reviewer))}</td>
     <td><code class="adno">${esc(f(r.ad_no))}</code></td>
@@ -1932,7 +1962,7 @@ function renderReviews(){
     <td>${bYN(r.is_fixed)}</td><td>${bYN(r.is_closed)}</td>
     <td>${esc(f(r.ad_amount))}</td>
     ${clkCell(r.summary,'汇总分析')}
-  </tr>`).join('') : emptyRow(13,'🔍','暂无符合条件的审查记录');
+  </tr>`) : emptyRow(13,'🔍','暂无符合条件的审查记录');
 }
 
 // 关键词卡片弹窗 + 编号下钻
@@ -1994,7 +2024,7 @@ function renderKw(){
   const kwCntEl=document.getElementById('kwCnt');
   if(kwPick.size) kwCntEl.innerHTML=`仅显示 ${kwPick.size} 个编号 <b>${[...kwPick].map(esc).join('、')}</b> <button class="qbtn" onclick="clearKwPick()">显示全部</button>`;
   else kwCntEl.textContent = `共 ${rows.length} 条`;
-  document.getElementById('kwTb').innerHTML = rows.length ? rows.map(r=>`<tr>
+  document.getElementById('kwTb').innerHTML = rows.length ? brandSections('keywords','关键词监控',11,rows,r=>`<tr>
     <td>${esc(f(r.no))}</td>
     <td>${r.brand?`<span class="brand">${esc(r.brand)}</span>`:'-'}</td>
     <td>${esc(f(r.source))}</td><td>${esc(f(r.sender))}</td>
@@ -2004,7 +2034,7 @@ function renderKw(){
     <td class="wrap" title="${esc(r.ai_analysis)}" style="font-size:12px;color:var(--text-secondary)">${esc(f(r.ai_analysis))}</td>
     <td>${bKw(r.status)}</td><td class="kaiti">${esc(f(r.reviewer))}</td>
     ${clkCell(r.remark,'备注')}
-  </tr>`).join('') : emptyRow(11,'🔑','暂无符合条件的监控记录');
+  </tr>`) : emptyRow(11,'🔑','暂无符合条件的监控记录');
 }
 
 function renderFocus(){
