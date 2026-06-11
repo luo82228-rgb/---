@@ -162,13 +162,22 @@ body.day .ink-bg{opacity:.94}
 .home-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1320px;margin:22px auto;padding:0 6px}
 .home-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
   min-height:158px;border-radius:16px;cursor:pointer;user-select:none;
-  background:var(--bg-card);border:1px solid var(--border);
-  box-shadow:0 8px 30px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.05);
+  background-color:rgba(16,19,32,0.42);border:1px solid var(--border);  /* 透明度与模块页面板(.tbox)一致 */
+  background-image:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,0) 42%);  /* 顶部斜向高光，增立体 */
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 14px 30px rgba(0,0,0,.34),0 3px 8px rgba(0,0,0,.22);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  transition:transform .15s,box-shadow .25s,border-color .25s}
-.home-card:hover{transform:translateY(-4px);border-color:var(--border-hover);
-  box-shadow:0 14px 40px rgba(0,0,0,.3),0 0 26px var(--accent-dim)}
-.home-card:active{transform:translateY(-1px)}
+  transition:transform .18s,box-shadow .25s,border-color .25s}
+body.day .home-card{background-color:rgba(255,255,255,0.48);
+  background-image:linear-gradient(165deg,rgba(255,255,255,.55),rgba(255,255,255,0) 46%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 14px 30px rgba(70,80,120,.18),0 3px 8px rgba(70,80,120,.12)}
+.home-card:hover{transform:translateY(-5px) scale(1.02);border-color:var(--border-hover);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 46px rgba(0,0,0,.42),0 0 30px var(--accent-dim)}
+.home-card:active{transform:translateY(-2px) scale(1.01)}
+/* 点卡跳转的立体动效：卡片放大淡出 → 模块页缩放浮入 */
+.home-card.launching{animation:cardLaunch .22s ease forwards;pointer-events:none}
+@keyframes cardLaunch{to{transform:scale(1.12);opacity:0}}
+.page.on{animation:pageIn .3s cubic-bezier(.2,.7,.3,1)}
+@keyframes pageIn{from{opacity:0;transform:scale(.965) translateY(14px)}to{opacity:1;transform:none}}
 .hc-ico{font-size:36px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25))}
 .hc-name{font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:1px}
 .nav-cnt{position:absolute;top:10px;right:12px;background:var(--brand-bg);color:var(--text-muted);
@@ -511,38 +520,38 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
     <!-- 首页：模块导航大卡片（2026-06-11 重构：撤掉左侧导航栏），4 列平铺，点卡片进入模块页 -->
     <div class="page on" id="page-home">
       <div class="home-grid">
-        <div class="home-card" data-page="overview" onclick="openPage('overview')">
+        <div class="home-card" data-page="overview" onclick="openPage('overview',this)">
           <span class="hc-ico">📊</span><span class="hc-name">业务总览</span>
         </div>
-        <div class="home-card" data-page="report" onclick="openPage('report')">
+        <div class="home-card" data-page="report" onclick="openPage('report',this)">
           <span class="hc-ico">📰</span><span class="hc-name">日报</span>
         </div>
-        <div class="home-card" data-page="ads" onclick="openPage('ads')">
+        <div class="home-card" data-page="ads" onclick="openPage('ads',this)">
           <span class="hc-ico">📋</span><span class="hc-name">广告明细</span>
           <span class="nav-cnt" id="cnt-ads">-</span>
         </div>
-        <div class="home-card" data-page="reviews" onclick="openPage('reviews')">
+        <div class="home-card" data-page="reviews" onclick="openPage('reviews',this)">
           <span class="hc-ico">🔍</span><span class="hc-name">审查台帐</span>
           <span class="nav-cnt" id="cnt-reviews">-</span>
         </div>
-        <div class="home-card" data-page="keywords" onclick="openPage('keywords')">
+        <div class="home-card" data-page="keywords" onclick="openPage('keywords',this)">
           <span class="hc-ico">🔑</span><span class="hc-name">关键词监控</span>
           <span class="nav-cnt" id="cnt-kw">-</span>
         </div>
-        <div class="home-card" data-page="focus" onclick="openPage('focus')">
+        <div class="home-card" data-page="focus" onclick="openPage('focus',this)">
           <span class="hc-ico">⭐</span><span class="hc-name">今日关注</span>
           <span class="nav-cnt" id="cnt-focus">-</span>
         </div>
-        <div class="home-card" data-page="tasks" onclick="openPage('tasks')">
+        <div class="home-card" data-page="tasks" onclick="openPage('tasks',this)">
           <span class="hc-ico">✅</span><span class="hc-name">任务清单</span>
           <span class="nav-cnt" id="cnt-tasks">-</span>
         </div>
-        <div class="home-card" data-page="ai" onclick="openPage('ai')">
+        <div class="home-card" data-page="ai" onclick="openPage('ai',this)">
           <span class="hc-ico">🤖</span><span class="hc-name">AI成效</span>
           <span class="nav-cnt" id="cnt-ai">-</span>
         </div>
         <!-- 设置：三种身份都可见；页面内容按 window.YP_ROLE 区分（非制作者显示无访问权限），服务端接口另有校验 -->
-        <div class="home-card" data-page="settings" onclick="openPage('settings')">
+        <div class="home-card" data-page="settings" onclick="openPage('settings',this)">
           <span class="hc-ico">⚙️</span><span class="hc-name">设置</span>
         </div>
       </div>
@@ -1433,7 +1442,13 @@ const PAGE_DENY = {
 function pageAllowed(pg){ const d=PAGE_DENY[pg]; return !(d && d.includes(window.YP_ROLE)); }
 
 // 首页大卡片 → 模块页跳转（2026-06-11 重构：撤掉左侧导航）；模块页平铺整版，左上角返回首页
-function openPage(pg){
+// 从卡片点击时传入卡片元素：先播放卡片放大淡出动效，再切页（页面入场动画在 .page.on 上）
+function openPage(pg,card){
+  if(card){
+    card.classList.add('launching');
+    setTimeout(()=>{ card.classList.remove('launching'); openPage(pg); },170);
+    return;
+  }
   page = pg;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.getElementById(pageAllowed(pg) ? 'page-'+pg : 'page-denied')?.classList.add('on');
