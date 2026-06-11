@@ -1434,11 +1434,16 @@ function renderOverview(){
     const cellb=(v,key)=> v>0
       ? `<button type="button" class="cellb" data-k="${key}" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${v}</button>`
       : `<span class="cellb zero">${v}</span>`;
+    // 全列徽标化（2026-06-11 用户要求）：收款金额→广告明细（同总览卡片的收款金额）、
+    // 审查次数→检查总量两段明细、覆盖群→相关广告明细、发现问题=无→点开显示空
     const issCell = iss>0
       ? `<button type="button" class="cellb danger" data-k="issues" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">${iss}个</button>`
-      : b('无','b-g');
-    const amtCell = isAdv ? `<span title="本月口径 · 已脱敏">${esc(advAmt(brand))}</span>` : amt.toLocaleString();
-    return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${cellb(brGrp.length,'ads')}</td><td style="color:var(--accent);font-weight:600">${amtCell}</td><td>${reviewCnt}</td><td>${cellb(brv.length,'rvs')}</td><td>${cellb(brk.length,'kws')}</td><td>${coverSet.size}</td><td>${issCell}</td></tr>`;
+      : `<button type="button" class="cellb" data-k="issues" data-brand="${esc(brand)}" onclick="ovToggleRow(this)">无</button>`;
+    const amtDisp = isAdv ? esc(advAmt(brand)) : amt.toLocaleString();
+    const amtCell = (isAdv || amt>0)
+      ? `<button type="button" class="cellb" data-k="ads" data-brand="${esc(brand)}" onclick="ovToggleRow(this)"${isAdv?' title="本月口径 · 已脱敏"':''}>${amtDisp}</button>`
+      : `<span class="cellb zero">0</span>`;
+    return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${cellb(brGrp.length,'ads')}</td><td>${amtCell}</td><td>${cellb(reviewCnt,'check')}</td><td>${cellb(brv.length,'rvs')}</td><td>${cellb(brk.length,'kws')}</td><td>${cellb(coverSet.size,'cover')}</td><td>${issCell}</td></tr>`;
   }).join('');
   document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -1526,6 +1531,19 @@ function buildOvDetail(key,brand){
   if(key==='kwpend'){
     const list=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('overview',k.log_time)&&kwIsEmpty(k));
     return head('关键词待处理（状态空白） '+list.length+' 条')+tbl(kwCols,list.map(kwRow));
+  }
+  if(key==='cover'){
+    // 覆盖群相关广告（口径同品牌汇总「覆盖群」列）：审查(当前日期范围)按编号反查广告的对接群
+    // + 关键词来源群整体去重；反查源与列出的广告都脱钩日期范围（同品牌汇总的 allBrandAds 思路）
+    const all=D.ads.filter(a=>a.group&&(!brand||a.brand===brand));
+    const rl=D.reviews.filter(r=>(!brand||r.brand===brand)&&inRange('overview',r.date));
+    const kl=D.keywords.filter(k=>(!brand||k.brand===brand)&&inRange('overview',k.log_time));
+    const adByNo=new Map(all.map(a=>[a.ad_no,a]));
+    const cover=new Set();
+    for(const r of rl){ const a=adByNo.get(r.ad_no); if(a&&a.group) cover.add(a.group); }
+    for(const k of kl){ if(k.source) cover.add(k.source); }
+    const list=all.filter(a=>cover.has(a.group));
+    return head('覆盖群 '+cover.size+' 个 · 相关广告 '+list.length+' 条')+tbl(adsCols,list.map(adsRow));
   }
   // 发现问题 = 审查问题项 + 关键词风险项；各自沿用对应页面的列
   const rvI=D.reviews.filter(r=>(!brand||r.brand===brand)&&inRange('overview',r.date)&&r.has_issue==='有');
