@@ -22,9 +22,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
   --border:rgba(139,156,255,0.18);
   --border-hover:rgba(139,156,255,0.45);
   --text-primary:#e7ecf6;
-  --text-secondary:#9aa6c4;
-  --text-muted:#6b7699;
-  --text-faint:#4a5375;
+  /* 夜览下灰色字体一律改白（2026-06-11 用户要求：灰字改黑、深底用白——夜览各表面全是深色玻璃，
+     故三档灰全部置白；浅底例外处（风险分段行/三卡黄卡/示例横幅等）各自有强制深色字，不走这些变量） */
+  --text-secondary:#ffffff;
+  --text-muted:#ffffff;
+  --text-faint:#ffffff;
   --accent:#8b9cff;
   --accent-dim:rgba(139,156,255,0.16);
   --btn-bg:rgba(139,156,255,0.14);
