@@ -322,11 +322,6 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .cellb.danger:hover{background:#ef4444;color:#fff;border-color:#ef4444}
 .cellb.zero{border-color:var(--border);color:var(--text-muted);background:transparent}  /* 0 值也可点（弹空明细），仅样式淡化 */
 .cellb.zero:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-/* 广告明细/审查台账/关键词监控的品牌分段标题行（单 tbody 内分段折叠，同已超期风险分段机制） */
-.bs-head td{background:var(--th-bg);color:var(--text-primary);font-weight:700;font-size:13px;padding:8px 12px;cursor:pointer;user-select:none;border-top:1px solid var(--border)}
-.bs-head .bs-chev{display:inline-block;font-size:11px;transition:transform .2s;margin-right:6px}
-.bs-head.bs-collapsed .bs-chev{transform:rotate(-90deg)}
-.bs-head .bs-cnt{font-weight:400;color:var(--text-muted);margin-left:8px}
 .ovd-row>td{padding:0;border-bottom:1px solid var(--border)}
 .ovd-inner{padding:12px 16px;border-top:2px solid var(--accent);max-height:340px;overflow:auto;background:var(--bg-hover)}
 .ovd-inner .op-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--text-primary)}
@@ -729,10 +724,12 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
         </select>
         <input class="search" id="adsQ" placeholder="搜索广告编号 / 商务 / 对接群…" oninput="renderAds()">
       </div>
-      <div class="tbox">
-        <div class="tbox-head">
-          <span class="tbox-title">广告明细</span>
-          <span class="t-count" id="adsCnt"></span>
+      <!-- 两个独立品牌板块（2026-06-11）：标题/计数/行由 fillBrandBoxes 填充，逸品在上、孵化在下；
+           第二份表头的筛选按钮用 data-cf 指向同一筛选键（两板块共享筛选状态，避免重复 id） -->
+      <div class="tbox" id="adsBox0">
+        <div class="tbox-head collapsible" onclick="toggleBox(this)">
+          <span class="tbox-headL"><span class="tbox-chevron">▼</span><span class="tbox-title" id="adsTitle0">广告明细</span></span>
+          <span class="t-count" id="adsCnt0"></span>
         </div>
         <div class="t-wrap">
           <table class="dt">
@@ -754,7 +751,36 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
               <th><button class="cf-trig" id="fc-recorder" type="button" onclick="openCfPop(this)">全部</button></th>
               <th><button class="cf-trig" id="fc-remark" type="button" onclick="openCfPop(this)">全部</button></th>
             </tr></thead>
-            <tbody id="adsTb"></tbody>
+            <tbody id="adsTb0"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tbox" id="adsBox1">
+        <div class="tbox-head collapsible" onclick="toggleBox(this)">
+          <span class="tbox-headL"><span class="tbox-chevron">▼</span><span class="tbox-title" id="adsTitle1">广告明细</span></span>
+          <span class="t-count" id="adsCnt1"></span>
+        </div>
+        <div class="t-wrap">
+          <table class="dt">
+            <thead><tr>
+              <th>广告编号</th><th>品牌</th><th>商务花名</th>
+              <th>广告对接群</th><th>广告类型</th><th>广告模式</th><th>广告金额</th>
+              <th>收款状态</th><th>打款时间</th><th>到期时间</th><th>记录人</th><th>备注</th>
+            </tr><tr class="ft-r">
+              <th><button class="cf-trig" data-cf="fc-ad_no" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-brand" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-biz_name" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-group" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-ad_type" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-ad_mode" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-amount" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-pay_status" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-pay_time" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-expire_time" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-recorder" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="fc-remark" type="button" onclick="openCfPop(this)">全部</button></th>
+            </tr></thead>
+            <tbody id="adsTb1"></tbody>
           </table>
         </div>
       </div>
@@ -796,10 +822,12 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
         <input class="search" id="rvQ" placeholder="搜索广告编号 / 审查对象…" oninput="renderReviews()">
       </div>
       <div class="stats" id="rvStats"></div>
-      <div class="tbox">
-        <div class="tbox-head">
-          <span class="tbox-title">审查台帐</span>
-          <span class="t-count" id="rvCnt"></span>
+      <!-- 两个独立品牌板块（2026-06-11）：标题/计数/行由 fillBrandBoxes 填充，逸品在上、孵化在下；
+           第二份表头的筛选按钮用 data-cf 指向同一筛选键（两板块共享筛选状态，避免重复 id） -->
+      <div class="tbox" id="rvBox0">
+        <div class="tbox-head collapsible" onclick="toggleBox(this)">
+          <span class="tbox-headL"><span class="tbox-chevron">▼</span><span class="tbox-title" id="rvTitle0">审查台账</span></span>
+          <span class="t-count" id="rvCnt0"></span>
         </div>
         <div class="t-wrap">
           <table class="dt">
@@ -822,7 +850,37 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
               <th><button class="cf-trig" id="rfc-ad_amount" type="button" onclick="openCfPop(this)">全部</button></th>
               <th><button class="cf-trig" id="rfc-summary" type="button" onclick="openCfPop(this)">全部</button></th>
             </tr></thead>
-            <tbody id="rvTb"></tbody>
+            <tbody id="rvTb0"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tbox" id="rvBox1">
+        <div class="tbox-head collapsible" onclick="toggleBox(this)">
+          <span class="tbox-headL"><span class="tbox-chevron">▼</span><span class="tbox-title" id="rvTitle1">审查台账</span></span>
+          <span class="t-count" id="rvCnt1"></span>
+        </div>
+        <div class="t-wrap">
+          <table class="dt">
+            <thead><tr>
+              <th>审查日期</th><th>品牌</th><th>审查对象</th><th>审查人</th>
+              <th>广告编号</th><th>审查场景</th><th>审查方式</th>
+              <th>发现问题</th><th>风险等级</th><th>是否整改</th><th>是否闭环</th><th>广告金额</th><th>汇总分析</th>
+            </tr><tr class="ft-r">
+              <th><button class="cf-trig" data-cf="rfc-date" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-brand" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-target" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-reviewer" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-ad_no" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-scene" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-method" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-has_issue" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-risk_level" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-is_fixed" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-is_closed" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-ad_amount" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="rfc-summary" type="button" onclick="openCfPop(this)">全部</button></th>
+            </tr></thead>
+            <tbody id="rvTb1"></tbody>
           </table>
         </div>
       </div>
@@ -864,10 +922,12 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
         <input class="search" id="kwQ" placeholder="搜索关键词 / 来源群…" oninput="renderKw()">
       </div>
       <div class="stats" id="kwStats"></div>
-      <div class="tbox">
-        <div class="tbox-head">
-          <span class="tbox-title">关键词监控</span>
-          <span class="t-count" id="kwCnt"></span>
+      <!-- 两个独立品牌板块（2026-06-11）：标题/计数/行由 fillBrandBoxes 填充，逸品在上、孵化在下；
+           第二份表头的筛选按钮用 data-cf 指向同一筛选键（两板块共享筛选状态，避免重复 id） -->
+      <div class="tbox" id="kwBox0">
+        <div class="tbox-head collapsible" onclick="toggleBox(this)">
+          <span class="tbox-headL"><span class="tbox-chevron">▼</span><span class="tbox-title" id="kwTitle0">关键词监控</span></span>
+          <span class="t-count" id="kwCnt0"></span>
         </div>
         <div class="t-wrap">
           <table class="dt">
@@ -888,7 +948,35 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
               <th><button class="cf-trig" id="kfc-reviewer" type="button" onclick="openCfPop(this)">全部</button></th>
               <th><button class="cf-trig" id="kfc-remark" type="button" onclick="openCfPop(this)">全部</button></th>
             </tr></thead>
-            <tbody id="kwTb"></tbody>
+            <tbody id="kwTb0"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tbox" id="kwBox1">
+        <div class="tbox-head collapsible" onclick="toggleBox(this)">
+          <span class="tbox-headL"><span class="tbox-chevron">▼</span><span class="tbox-title" id="kwTitle1">关键词监控</span></span>
+          <span class="t-count" id="kwCnt1"></span>
+        </div>
+        <div class="t-wrap">
+          <table class="dt">
+            <thead><tr>
+              <th>编号</th><th>品牌</th><th>来源群</th><th>发送人</th><th>命中关键词</th>
+              <th>消息内容</th><th>登记时间</th><th>AI分析</th>
+              <th>处理状态</th><th>审查人员</th><th>备注</th>
+            </tr><tr class="ft-r">
+              <th><button class="cf-trig" data-cf="kfc-no" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-brand" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-source" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-sender" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-keyword" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-content" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-log_time" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-ai" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-status" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-reviewer" type="button" onclick="openCfPop(this)">全部</button></th>
+              <th><button class="cf-trig" data-cf="kfc-remark" type="button" onclick="openCfPop(this)">全部</button></th>
+            </tr></thead>
+            <tbody id="kwTb1"></tbody>
           </table>
         </div>
       </div>
@@ -1354,29 +1442,26 @@ function toast(msg, icon){
 }
 function emptyRow(cols,icon,msg){ return `<tr><td colspan="${cols}"><div class="empty"><div class="ei">${icon}</div><div class="et">${msg}</div></div></td></tr>`; }
 
-// ── 广告明细/审查台账/关键词监控按品牌分两段展示（2026-06-11 用户要求）──
-// 段标题「页面名-品牌　共 N 条」，可折叠；品牌升序排（逸品在上、逸品孵化在下，
-// advanced 的打码品牌 **/**** 和 viewer 的示例品牌A/B 同样成立）。
-// 单 tbody 内分段折叠（同已超期风险分段思路，与整框折叠 toggleBox 是两套机制）；
-// 折叠状态记在全局 Set（key=页面|品牌），筛选变化、60 秒轮询重渲染都不丢。
-const bsCollapsed=new Set();
-function brandSections(pg,title,cols,rows,rowFn){
-  const brands=[...new Set(rows.map(r=>r.brand))].filter(Boolean).sort();
-  if(rows.some(r=>!r.brand)) brands.push('');   // 没标品牌的行兜底归到最后一段
-  if(!brands.length) return rows.map(rowFn).join('');
-  return brands.map((b,i)=>{
-    const list=rows.filter(r=>(r.brand||'')===(b||''));
-    const key=pg+'|'+(b||'其他'), collapsed=bsCollapsed.has(key);
-    const hide=collapsed?' style="display:none"':'';
-    return `<tr class="bs-head${collapsed?' bs-collapsed':''}" data-bs="${i}" data-key="${escA(key)}" onclick="toggleBrandSec(this)"><td colspan="${cols}"><span class="bs-chev">▼</span>${esc(title)}-${esc(b||'其他')}<span class="bs-cnt">共 ${list.length} 条</span></td></tr>`
-      + list.map(r=>rowFn(r).replace('<tr>',`<tr class="bs-row-${i}"${hide}>`)).join('');
-  }).join('');
-}
-function toggleBrandSec(tr){
-  const collapse=!tr.classList.contains('bs-collapsed');
-  tr.classList.toggle('bs-collapsed',collapse);
-  if(collapse) bsCollapsed.add(tr.dataset.key); else bsCollapsed.delete(tr.dataset.key);
-  tr.closest('tbody').querySelectorAll('.bs-row-'+tr.dataset.bs).forEach(r=>r.style.display=collapse?'none':'');
+// ── 广告明细/审查台账/关键词监控：按品牌拆成两个完全独立的板块（2026-06-11 二版，取代同表分段）──
+// 每页两个静态 .tbox（整盒折叠 toggleBox，折叠状态留在 DOM 上、筛选/轮询重渲染不丢），
+// 标题「页面名-品牌」；品牌升序=逸品在上、逸品孵化在下（advanced 打码品牌 **/****、
+// viewer 示例品牌A/B 同样成立）；只有一个品牌时隐藏第二盒；没标品牌的行兜底归「其他」；
+// cntHtml 可选，审查/关键词的「仅显示 N 个编号」提示用（按钮记得 stopPropagation 防触发整盒折叠）。
+function fillBrandBoxes(pre,title,cols,icon,msg,rows,rowFn,cntHtml){
+  const norm=r=>r.brand||'其他';
+  const brands=[...new Set(rows.map(norm))].sort();
+  const groups=brands.length<=2
+    ? brands.map(b=>[b,rows.filter(r=>norm(r)===b)])
+    : [[brands[0],rows.filter(r=>norm(r)===brands[0])],['其他',rows.filter(r=>norm(r)!==brands[0])]];
+  for(let i=0;i<2;i++){
+    const box=document.getElementById(pre+'Box'+i), g=groups[i];
+    if(!g&&i===1){ box.style.display='none'; continue; }
+    box.style.display='';
+    document.getElementById(pre+'Title'+i).textContent=g?title+'-'+g[0]:title;
+    const list=g?g[1]:[];
+    document.getElementById(pre+'Cnt'+i).innerHTML=cntHtml?cntHtml(list.length):`共 ${list.length} 条`;
+    document.getElementById(pre+'Tb'+i).innerHTML=list.length?list.map(rowFn).join(''):emptyRow(cols,icon,msg);
+  }
 }
 
 function toggleNavGroup(){ document.getElementById('nav-group-more')?.classList.toggle('open'); }
@@ -1704,6 +1789,9 @@ function copyReport(){
 const cfSel={}; // id -> Set<string>
 const cfPopCtx={}; // id -> {options:[], cfKey, onChange}
 let activeCfTrigger=null;
+// 品牌双板块后每页有两份表头：第一份按钮用 id，第二份用 data-cf 指向同一筛选键，
+// 状态/选项按键共享（在任一板块操作筛选，两个板块同时生效）
+const cfKeyOf=el=>el.dataset.cf||el.id;
 function getCfSet(id){ return cfSel[id] || (cfSel[id]=new Set()); }
 function buildCf(cfgs){
   const cf={};
@@ -1711,11 +1799,12 @@ function buildCf(cfgs){
   return cf;
 }
 function updateCfTrigger(id){
-  const el=document.getElementById(id); if(!el) return;
   const sel=cfSel[id]||new Set();
-  if(sel.size===0){ el.textContent='全部'; el.classList.remove('has-sel'); }
-  else if(sel.size===1){ el.textContent=[...sel][0]; el.classList.add('has-sel'); }
-  else { el.textContent=`${sel.size} 项`; el.classList.add('has-sel'); }
+  document.querySelectorAll('#'+id+',[data-cf="'+id+'"]').forEach(el=>{
+    if(sel.size===0){ el.textContent='全部'; el.classList.remove('has-sel'); }
+    else if(sel.size===1){ el.textContent=[...sel][0]; el.classList.add('has-sel'); }
+    else { el.textContent=`${sel.size} 项`; el.classList.add('has-sel'); }
+  });
 }
 function rebuildColFilters(topRows, cfgs, cf, matchFn, onChange){
   cfgs.forEach(([id, get, kind, cfKey])=>{
@@ -1763,7 +1852,7 @@ function closeCfPop(){
 }
 function renderCfPop(){
   if(!activeCfTrigger) return;
-  const id=activeCfTrigger.id;
+  const id=cfKeyOf(activeCfTrigger);
   if(!cfPopCtx[id]) return;
   const pop=document.getElementById('cf-pop');
   if(popShownForId!==id){
@@ -1786,7 +1875,7 @@ function renderCfPop(){
 }
 function renderCfPopList(){
   if(!activeCfTrigger) return;
-  const id=activeCfTrigger.id;
+  const id=cfKeyOf(activeCfTrigger);
   const ctx=cfPopCtx[id]; if(!ctx) return;
   const sel=getCfSet(id);
   const search=(document.getElementById('cf-pop-search')?.value||'').toLowerCase();
@@ -1800,14 +1889,14 @@ function renderCfPopList(){
 }
 function cfToggle(cb){
   if(!activeCfTrigger) return;
-  const id=activeCfTrigger.id, sel=getCfSet(id), v=cb.dataset.v;
+  const id=cfKeyOf(activeCfTrigger), sel=getCfSet(id), v=cb.dataset.v;
   if(cb.checked) sel.add(v); else sel.delete(v);
   updateCfTrigger(id);
   cfPopCtx[id]?.onChange?.();
 }
 function cfToggleAll(checked){
   if(!activeCfTrigger) return;
-  const id=activeCfTrigger.id, sel=getCfSet(id), ctx=cfPopCtx[id];
+  const id=cfKeyOf(activeCfTrigger), sel=getCfSet(id), ctx=cfPopCtx[id];
   const search=(document.getElementById('cf-pop-search')?.value||'').toLowerCase();
   const filtered=ctx.options.filter(v=>!search||String(v).toLowerCase().includes(search));
   if(checked) filtered.forEach(v=>sel.add(v));
@@ -1817,7 +1906,7 @@ function cfToggleAll(checked){
 }
 function cfClear(){
   if(!activeCfTrigger) return;
-  const id=activeCfTrigger.id;
+  const id=cfKeyOf(activeCfTrigger);
   cfSel[id]=new Set();
   updateCfTrigger(id);
   cfPopCtx[id]?.onChange?.();
@@ -1872,8 +1961,7 @@ function renderAds(){
     if(dv>tv&&dv<=t3v) return `<span style="color:#f59e0b;font-weight:600">${esc(dateStr)}</span>`;
     return esc(f(dateStr));
   }
-  document.getElementById('adsCnt').textContent = `共 ${rows.length} 条`;
-  document.getElementById('adsTb').innerHTML = rows.length ? brandSections('ads','广告明细',12,rows,r=>`<tr>
+  fillBrandBoxes('ads','广告明细',12,'📋','暂无符合条件的广告数据',rows,r=>`<tr>
     <td><code class="adno">${esc(r.ad_no)}</code></td>
     <td><span class="brand">${esc(r.brand)}</span></td>
     <td>${bizName(r.biz_name)}</td>
@@ -1883,7 +1971,7 @@ function renderAds(){
     <td>${bPay(r.pay_status)}</td><td>${esc(f(r.pay_time))}</td>
     <td>${expireTag(r.expire_time)}</td><td class="kaiti">${esc(f(r.recorder))}</td>
     ${clkCell(r.remark,'备注','wrap')}
-  </tr>`) : emptyRow(12,'📋','暂无符合条件的广告数据');
+  </tr>`);
 }
 
 // 审查台账卡片弹窗 + 编号下钻（口径见语义文件 #11 审查版；下钻主键为广告编号 ad_no）
@@ -1950,10 +2038,10 @@ function renderReviews(){
     const cnt={}; rows.forEach(r=>cnt[r.ad_no]=(cnt[r.ad_no]||0)+1);
     rows=rows.filter(r=>cnt[r.ad_no]<=1||r.has_issue==='有');
   }
-  const rvCntEl=document.getElementById('rvCnt');
-  if(rvPick.size) rvCntEl.innerHTML=`仅显示 ${rvPick.size} 个编号 <b>${[...rvPick].map(esc).join('、')}</b> <button class="qbtn" onclick="clearRvPick()">显示全部</button>`;
-  else rvCntEl.textContent = `共 ${rows.length} 条`;
-  document.getElementById('rvTb').innerHTML = rows.length ? brandSections('reviews','审查台账',13,rows,r=>`<tr>
+  const rvCntHtml=n=> rvPick.size
+    ? `仅显示 ${rvPick.size} 个编号 <b>${[...rvPick].map(esc).join('、')}</b> <button class="qbtn" onclick="event.stopPropagation();clearRvPick()">显示全部</button>`
+    : `共 ${n} 条`;
+  fillBrandBoxes('rv','审查台账',13,'🔍','暂无符合条件的审查记录',rows,r=>`<tr>
     <td>${esc(f(r.date))}</td><td><span class="brand">${esc(r.brand)}</span></td>
     <td>${bizName(r.target)}</td><td class="kaiti">${esc(f(r.reviewer))}</td>
     <td><code class="adno">${esc(f(r.ad_no))}</code></td>
@@ -1962,7 +2050,7 @@ function renderReviews(){
     <td>${bYN(r.is_fixed)}</td><td>${bYN(r.is_closed)}</td>
     <td>${esc(f(r.ad_amount))}</td>
     ${clkCell(r.summary,'汇总分析')}
-  </tr>`) : emptyRow(13,'🔍','暂无符合条件的审查记录');
+  </tr>`,rvCntHtml);
 }
 
 // 关键词卡片弹窗 + 编号下钻
@@ -2021,10 +2109,10 @@ function renderKw(){
   let rows=topRows.filter(r=>matchSimpleCol(r, cf, null));
   // 从卡片弹窗多选了若干编号：明细只列这些编号的行（取自卡片同口径的 kwBase，不受其它筛选影响）
   if(kwPick.size) rows=kwBase.filter(r=>kwPick.has(String(r.no)));
-  const kwCntEl=document.getElementById('kwCnt');
-  if(kwPick.size) kwCntEl.innerHTML=`仅显示 ${kwPick.size} 个编号 <b>${[...kwPick].map(esc).join('、')}</b> <button class="qbtn" onclick="clearKwPick()">显示全部</button>`;
-  else kwCntEl.textContent = `共 ${rows.length} 条`;
-  document.getElementById('kwTb').innerHTML = rows.length ? brandSections('keywords','关键词监控',11,rows,r=>`<tr>
+  const kwCntHtml=n=> kwPick.size
+    ? `仅显示 ${kwPick.size} 个编号 <b>${[...kwPick].map(esc).join('、')}</b> <button class="qbtn" onclick="event.stopPropagation();clearKwPick()">显示全部</button>`
+    : `共 ${n} 条`;
+  fillBrandBoxes('kw','关键词监控',11,'🔑','暂无符合条件的监控记录',rows,r=>`<tr>
     <td>${esc(f(r.no))}</td>
     <td>${r.brand?`<span class="brand">${esc(r.brand)}</span>`:'-'}</td>
     <td>${esc(f(r.source))}</td><td>${esc(f(r.sender))}</td>
@@ -2034,7 +2122,7 @@ function renderKw(){
     <td class="wrap" title="${esc(r.ai_analysis)}" style="font-size:12px;color:var(--text-secondary)">${esc(f(r.ai_analysis))}</td>
     <td>${bKw(r.status)}</td><td class="kaiti">${esc(f(r.reviewer))}</td>
     ${clkCell(r.remark,'备注')}
-  </tr>`) : emptyRow(11,'🔑','暂无符合条件的监控记录');
+  </tr>`,kwCntHtml);
 }
 
 function renderFocus(){
