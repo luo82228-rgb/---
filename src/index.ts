@@ -51,6 +51,35 @@ export default {
       return handleChangePassword(request, env, sessionRole);
     }
 
+    // 商务状态监测的人工扣分（2026-06-11）：存 KV `bizded:v1`（{记录键:扣分数} 的 JSON 映射，
+    // 记录键由前端按 审查日期|品牌|广告编号|序号 拼出）；读取任何身份可调（非制作者得空映射），
+    // 写入仅限制作者。月度归集、得分计算都在前端做，这里只是个带权限的小存储。
+    if (pathname === '/api/bizded') {
+      const json = (status: number, body: Record<string, unknown>) =>
+        new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+      if (request.method === 'POST') {
+        if (sessionRole !== 'owner') return json(403, { success: false, error: '只有制作者可以录入扣分' });
+        let set: Record<string, unknown> = {};
+        try {
+          const body = (await request.json()) as Record<string, unknown>;
+          set = (body.set as Record<string, unknown>) || {};
+        } catch {
+          return json(400, { success: false, error: '请求格式不对' });
+        }
+        const cur = ((await env.AUTH_KV.get('bizded:v1', 'json')) as Record<string, number> | null) || {};
+        for (const [k, v] of Object.entries(set)) {
+          const n = Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
+          if (n > 0) cur[k] = n;
+          else delete cur[k]; // 0 / 空 = 撤销该条扣分
+        }
+        await env.AUTH_KV.put('bizded:v1', JSON.stringify(cur));
+        return json(200, { success: true, deductions: cur });
+      }
+      if (sessionRole !== 'owner') return json(200, { success: true, deductions: {} });
+      const cur = ((await env.AUTH_KV.get('bizded:v1', 'json')) as Record<string, number> | null) || {};
+      return json(200, { success: true, deductions: cur });
+    }
+
     if (pathname === '/api/all' || pathname === '/api/refresh') {
       // 普通访问者：不抓取任何真实数据，直接返回写死的示例载荷（2026-06-11 方案）；
       // 也不碰缓存——viewer 点「同步数据」不应清掉别人的全量缓存
