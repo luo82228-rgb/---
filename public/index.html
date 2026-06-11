@@ -382,6 +382,9 @@ body.day .b-y{background:#fef9c3;color:#b45309;border-color:#fde68a}
 .cellb.danger:hover{background:#ef4444;color:#fff;border-color:#ef4444}
 .cellb.zero{border-color:var(--border);color:var(--text-muted);background:transparent}  /* 0 值也可点（弹空明细），仅样式淡化 */
 .cellb.zero:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* 商务状态监测的血量条：绿=得分占比，扣分部分露出红底 */
+.hpbar{width:140px;height:13px;border-radius:8px;background:linear-gradient(90deg,#ef4444,#dc2626);overflow:hidden;border:1px solid rgba(0,0,0,.3);box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
+.hpbar .hp{height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:8px 0 0 8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35);transition:width .4s ease}
 .ovd-row>td{padding:0;border-bottom:1px solid var(--border)}
 .ovd-inner{padding:12px 16px;border-top:2px solid var(--accent);max-height:340px;overflow:auto;background:var(--bg-hover)}
 .ovd-inner .op-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--text-primary)}
@@ -1440,10 +1443,12 @@ function adType(v){
   return esc(s);
 }
 // 商务花名 / 审查对象徽标（颜色为用户指定）；名单外一律深灰
+// 商务花名配色名单；名单外一律深灰。商务状态监测只统计名单内商务（灰徽标=名单外，2026-06-11 用户要求排除）
+const BIZ_COLORS=[['郭永正','#f87171'],['卢登','#b45309'],['吴挺','#15803d'],['陈亦凡','#2563eb'],['刘知曲','#b91c1c'],['杨海瑞','#22c55e']];
+const bizNamed=s=>BIZ_COLORS.some(([k])=>String(s||'').includes(k));
 function bizName(v){
   const s=String(v==null?'':v).trim(); if(!s) return '-';
-  const map=[['郭永正','#f87171'],['卢登','#b45309'],['吴挺','#15803d'],['陈亦凡','#2563eb'],['刘知曲','#b91c1c'],['杨海瑞','#22c55e']];
-  for(const [k,c] of map){ if(s.includes(k)) return pill(s,c); }
+  for(const [k,c] of BIZ_COLORS){ if(s.includes(k)) return pill(s,c); }
   return pill(s,'#475569');
 }
 // 审查场景徽标（颜色为用户指定）：出款浅红/流程黄/群组浅绿
@@ -1602,43 +1607,59 @@ function renderOverview(){
   document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
   renderBizMon(br);
 }
-// ── 商务状态监测（2026-06-11 加，品牌汇总下方）──
-// 口径 v1：按商务花名聚合全部带群广告；受品牌筛选、不随总览日期范围（趋势本身跨月）。
-// 在投=未下架；超期=在投且到期日<今天（对齐今日关注#5 的排除已下架）；
-// 状态：有「无备注超期」→风险，有超期→需关注，有在投→正常，否则→无在投（备注判定同 overdueRiskIdx 高风险=空备注）；
-// 得分(100)=收款率×60+超期处理×40（超期处理=1-无备注超期/超期数，无超期记满分；收款率口径同 isPaid 含已下架）；
-// 评级：A≥85 / B≥70 / C≥55 / D<55；月度趋势=近6个月广告条数（按打款时间）迷你柱线。
+// ── 商务状态监测（2026-06-11 加，品牌汇总下方；同日按用户反馈改版 v2）──
+// 只统计配色名单内的商务（bizNamed，灰徽标=名单外不进表）；受品牌筛选、不随总览日期范围。
+// 在投=未下架；超期=在投且到期日<今天；得分(100)=收款率×60+超期处理×40
+//（超期处理=1-无备注超期/超期数，无超期满分；收款率=isPaid 含已下架）。
+// 状态情况=血量条：绿色=得分占比，扣分部分露出红底；评级 S=100/A≥90/B≥80/C≥70/D<70；
+// 月度趋势=K线图（数据源=每月得分，开盘=上月得分收盘=本月，红涨绿跌，无数据月灰色平线）。
 function renderBizMon(br){
   const t0=today0(), tv=t0.getFullYear()*10000+t0.getMonth()*100+t0.getDate();
-  const ads=D.ads.filter(a=>a.group&&(!br||a.brand===br));
+  const ads=D.ads.filter(a=>a.group&&(!br||a.brand===br)&&bizNamed(a.biz_name));
   const by={};
-  ads.forEach(a=>{ const k=a.biz_name||'未填写'; (by[k]=by[k]||[]).push(a); });
+  ads.forEach(a=>{ const k=a.biz_name; (by[k]=by[k]||[]).push(a); });
   const months=[];
   for(let i=5;i>=0;i--){ const d=new Date(t0.getFullYear(),t0.getMonth()-i,1); months.push(d.getFullYear()*100+(d.getMonth()+1)); }
-  const SPARK='▁▂▃▄▅▆▇█';
-  const list=Object.entries(by).map(([name,arr])=>{
+  const calc=arr=>{
+    if(!arr.length) return null;
     const live=arr.filter(a=>!(a.pay_status||'').includes('已下架'));
     const overdue=live.filter(a=>{ const d=parseDate(a.expire_time); return d&&d.getFullYear()*10000+d.getMonth()*100+d.getDate()<tv; });
     const odBad=overdue.filter(a=>!(a.remark||'').trim()).length;
-    const payRate=arr.length?arr.filter(isPaid).length/arr.length:0;
+    const payRate=arr.filter(isPaid).length/arr.length;
     const odOk=overdue.length?1-odBad/overdue.length:1;
-    const score=Math.round(payRate*60+odOk*40);
-    const cnt=months.map(m=>arr.filter(a=>{ const d=parseDate(a.pay_time); return d&&d.getFullYear()*100+(d.getMonth()+1)===m; }).length);
-    return {name,live:live.length,overdue:overdue.length,odBad,score,cnt};
+    return {score:Math.round(payRate*60+odOk*40),live:live.length,overdue:overdue.length,odBad};
+  };
+  // K线：单值序列画蜡烛，open=上月得分 close=本月得分；红涨绿跌（股市惯例）；无数据月=灰色平线
+  const kline=(scores)=>{
+    const W=150,H=34,n=scores.length,cw=12,gap=(W-n*cw)/(n+1);
+    let prev=null,x=gap;
+    const parts=scores.map((v,i)=>{
+      const cur=v==null?prev:v;
+      if(cur==null){ x+=cw+gap; return ''; }
+      const open=prev==null?cur:prev;
+      const yTop=2+(1-Math.max(open,cur)/100)*(H-4);
+      const h=Math.max(2,Math.abs(cur-open)/100*(H-4));
+      const col=v==null?'#94a3b8':cur>open?'#ef4444':cur<open?'#22c55e':'#94a3b8';
+      const r=`<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${cw}" height="${h.toFixed(1)}" rx="1.5" fill="${col}"><title>${months[i]%100}月：${v==null?'无数据':'得分 '+v}</title></rect>`;
+      prev=cur; x+=cw+gap; return r;
+    });
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:middle">${parts.join('')}</svg>`;
+  };
+  const list=Object.entries(by).map(([name,arr])=>{
+    const all=calc(arr);
+    const mScores=months.map(m=>{ const c=calc(arr.filter(a=>{ const d=parseDate(a.pay_time); return d&&d.getFullYear()*100+(d.getMonth()+1)===m; })); return c?c.score:null; });
+    return {name,...all,mScores};
   }).sort((x,y)=>y.score-x.score||x.name.localeCompare(y.name));
   document.getElementById('bizMonCnt').textContent=`共 ${list.length} 位商务`;
   document.getElementById('bizMonTb').innerHTML=list.length?list.map(r=>{
-    const grade=r.score>=85?['A','#22c55e']:r.score>=70?['B','#2563eb']:r.score>=55?['C','#eab308']:['D','#ef4444'];
-    const st=r.odBad?pill('风险','#ef4444'):r.overdue?pill('需关注','#eab308'):r.live?pill('正常','#22c55e'):pill('无在投','#94a3b8');
-    const mx=Math.max(1,...r.cnt);
-    const spark=r.cnt.map(c=>SPARK[Math.round(c/mx*7)]).join('');
-    const tip=`近6个月广告条数：${months.map((m,i)=>`${m%100}月${r.cnt[i]}`).join(' / ')}`;
+    const grade=r.score>=100?['S','#f59e0b']:r.score>=90?['A','#22c55e']:r.score>=80?['B','#2563eb']:r.score>=70?['C','#eab308']:['D','#ef4444'];
+    const tip=`得分 ${r.score}/100 · 在投 ${r.live} · 超期 ${r.overdue}${r.odBad?` · 无备注超期 ${r.odBad}`:''}`;
     return `<tr>
     <td>${bizName(r.name)}</td>
-    <td>${st} <span style="color:var(--text-secondary);font-size:12px">在投 ${r.live} · 超期 ${r.overdue}${r.odBad?` · 无备注超期 ${r.odBad}`:''}</span></td>
+    <td><div class="hpbar" title="${esc(tip)}"><div class="hp" style="width:${r.score}%"></div></div></td>
     <td style="color:${grade[1]};font-weight:700">${r.score}</td>
     <td>${pill(grade[0],grade[1])}</td>
-    <td><span title="${esc(tip)}" style="color:var(--accent);font-size:16px;letter-spacing:3px;cursor:default">${spark}</span></td>
+    <td>${kline(r.mScores)}</td>
   </tr>`;}).join(''):emptyRow(5,'👤','暂无商务数据');
 }
 // ── 品牌汇总单元格徽标的明细下拉 ──（按当前总览日期范围 + 该行品牌口径，与汇总数字一致）
