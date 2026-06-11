@@ -1467,9 +1467,12 @@ function adType(v){
 // 商务花名配色名单；名单外一律深灰。商务状态监测只统计名单内商务（灰徽标=名单外，2026-06-11 用户要求排除）
 const BIZ_COLORS=[['郭永正','#f87171'],['卢登','#b45309'],['吴挺','#15803d'],['陈亦凡','#2563eb'],['刘知曲','#b91c1c'],['杨海瑞','#22c55e']];
 const bizNamed=s=>BIZ_COLORS.some(([k])=>String(s||'').includes(k));
+// 服务端 maskText 的打码形态（保留约20%明文头+星号）：advanced 看到的商务名是打码的（如 卢*/郭**），
+// 名单匹配把打码形态也认进去，徽标颜色保持不变（2026-06-11 用户要求；打码是确定性的所以可静态算出）
+const maskOf=s=>{ if(s.length===1) return '*'; const vis=Math.min(Math.max(1,Math.floor(s.length*0.2)),6); return s.slice(0,vis)+'*'.repeat(Math.min(s.length-vis,24)); };
 function bizName(v){
   const s=String(v==null?'':v).trim(); if(!s) return '-';
-  for(const [k,c] of BIZ_COLORS){ if(s.includes(k)) return pill(s,c); }
+  for(const [k,c] of BIZ_COLORS){ if(s.includes(k)||s===maskOf(k)) return pill(s,c); }
   return pill(s,'#475569');
 }
 // 审查场景徽标（颜色为用户指定）：出款浅红/流程黄/群组浅绿
