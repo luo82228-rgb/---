@@ -112,7 +112,7 @@ type Row = Record<string, unknown>;
 // unique*：参与筛选/编号反查/下钻分组/去重的连接键，要走防碰撞打码保证不同原文掩码不同。
 const ADV_MASK_FIELDS: Record<string, { unique: string[]; fullUnique: string[]; full: string[]; plain: string[] }> = {
   ads:      { unique: ['ad_no', 'group'], fullUnique: ['brand'], full: ['amount', 'remark', 'ad_type'], plain: ['biz_name', 'recorder'] },
-  reviews:  { unique: ['ad_no'],          fullUnique: ['brand'], full: ['ad_amount'],                   plain: ['target', 'reviewer', 'issue_desc', 'summary'] },
+  reviews:  { unique: ['ad_no'],          fullUnique: ['brand'], full: ['ad_amount', 'summary'],        plain: ['target', 'reviewer', 'issue_desc'] },
   keywords: { unique: ['no', 'source'],   fullUnique: ['brand'], full: ['remark'],                      plain: ['sender', 'keyword', 'content', 'ai_analysis', 'reviewer'] },
   tasks:    { unique: [],                 fullUnique: [],        full: ['remark'],                      plain: ['task_name', 'reviewer', 'progress', 'milestone'] },
   ai_items: { unique: ['flow_no'],        fullUnique: [],        full: ['remark'],                      plain: ['flow_name', 'summary', 'reviewer', 'input', 'output', 'steps', 'tools', 'save_time'] },
