@@ -152,6 +152,9 @@ body.day .ink-bg{opacity:.94}
 
 /* ── 侧栏 ── */
 .layout{display:flex;flex:1;overflow:hidden}
+/* 普通访问者「示例数据」横幅：常驻 topbar 之下、横跨全宽，用户要求非常醒目 */
+#demoBanner{display:none;padding:13px 20px;text-align:center;font-size:21px;font-weight:800;letter-spacing:3px;color:#7c2d12;background:repeating-linear-gradient(45deg,#fbbf24 0 26px,#f59e0b 26px 52px);border-bottom:2px solid #b45309;text-shadow:0 1px 0 rgba(255,255,255,.5);flex-shrink:0}
+#demoBanner small{display:block;font-size:13px;font-weight:600;letter-spacing:1px;margin-top:3px;color:#92400e;text-shadow:none}
 .sidebar{width:190px;background:var(--bg-panel);border-right:1px solid var(--border);
   flex-shrink:0;padding:12px 0;overflow-y:auto;transition:background .5s,border-color .5s}
 .nav-lbl{font-size:11px;font-weight:600;color:var(--text-faint);letter-spacing:1px;
@@ -539,6 +542,9 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
     </button>
   </div>
 </div>
+
+<!-- 普通访问者示例数据横幅（仅 viewer 显示，启动时按 window.YP_ROLE 打开） -->
+<div id="demoBanner">⚠️ 示例数据 ⚠️<small>当前为演示视图 · 页面中所有内容均为虚拟示例，并非真实业务数据</small></div>
 
 <div class="layout">
   <div class="sidebar">
@@ -1340,19 +1346,13 @@ function toast(msg, icon){
 function emptyRow(cols,icon,msg){ return `<tr><td colspan="${cols}"><div class="empty"><div class="ei">${icon}</div><div class="et">${msg}</div></div></td></tr>`; }
 
 function toggleNavGroup(){ document.getElementById('nav-group-more')?.classList.toggle('open'); }
-// 页面权限（与 window.YP_ROLE 配合）：制作者全开；日报仅制作者；
-// 高级访问者除日报/设置外全开，但明细数据由 Worker 端打码下发（内容字段 80% 加密、
-// 日期/品牌/状态类骨架字段保留，筛选照常；金额求和取 viewer_overview 快照）。
-// 普通访问者只开放业务总览（且总览是服务端算好的脱敏快照，见 renderOverview 的 viewer 分支）。
-// 数据级隔离在 Worker 端（trimForRole）：viewer 的 /api/all 不含任何原始明细数组。
+// 页面权限（与 window.YP_ROLE 配合）：制作者全开；日报仅制作者；设置页另由 set-panel/set-denied 控制（仅制作者）。
+// 高级访问者除日报/设置外全开，但明细数据由 Worker 端打码下发（品牌/金额/备注/广告类型/汇总分析全量打码，
+// 其余内容字段 80% 加密、日期/状态类骨架字段保留，筛选照常；金额求和取 viewer_overview 快照）。
+// 普通访问者除日报/设置外也全开，但 /api/all 返回的是服务端写死的虚拟示例数据（src/demo.ts），
+// 不含任何真实业务数据；页面顶部常驻醒目的「示例数据」横幅（#demoBanner）。
 const PAGE_DENY = {
   report:   ['advanced','viewer'],
-  ads:      ['viewer'],
-  reviews:  ['viewer'],
-  keywords: ['viewer'],
-  focus:    ['viewer'],
-  tasks:    ['viewer'],
-  ai:       ['viewer'],
 };
 function pageAllowed(pg){ const d=PAGE_DENY[pg]; return !(d && d.includes(window.YP_ROLE)); }
 
@@ -1384,19 +1384,7 @@ function render(){ renderPage(page); }
 // 收款金额口径：已收款 + 已下架（下架前已打款的款项也算进账，与今日关注的"排除已下架"是不同语义）
 function isPaid(a){ const s=a.pay_status||''; return s.includes('已收款')||s.includes('已下架'); }
 function renderOverview(){
-  // 普通访问者：渲染服务端算好并打码的脱敏快照（固定本月+全部品牌），卡片/品牌行不可点开明细
-  if(window.YP_ROLE==='viewer'){
-    const vo=D.viewer_overview;
-    const pf=document.querySelector('#page-overview .pf');
-    if(pf) pf.innerHTML='<span class="pf-lbl">📊 本月数据 · 已脱敏展示</span>';
-    if(!vo){ document.getElementById('statsGrid').innerHTML=''; document.getElementById('brandTable').innerHTML='<div class="empty"><div class="ei">📊</div><div class="et">暂无数据</div></div>'; return; }
-    document.getElementById('statsGrid').innerHTML = vo.stats.map(c=>`<div class="scard ${c.cls||''}"><div class="sv">${esc(c.value)}</div><div class="sl">${esc(c.label)}</div></div>`).join('');
-    document.getElementById('brandCnt').textContent = `共 ${vo.brands.length} 个品牌`;
-    document.getElementById('brandTable').innerHTML = vo.brands.length
-      ? `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${vo.brands.map(r=>`<tr><td><span class="brand">${esc(r.brand)}</span></td><td>${esc(r.ads)}</td><td style="color:var(--accent);font-weight:600">${esc(r.amount)}</td><td>${esc(r.review_cnt)}</td><td>${esc(r.rvs)}</td><td>${esc(r.kws)}</td><td>${esc(r.cover)}</td><td>${esc(r.issues)}</td></tr>`).join('')}</tbody></table>`
-      : '<div class="empty"><div class="ei">📊</div><div class="et">暂无数据</div></div>';
-    return;
-  }
+  // 普通访问者不再有专用快照分支：viewer 拿到的是服务端虚拟示例数据，按正常逻辑渲染即可
   const br = getBrand('overview');
   // 高级访问者：明细金额已打码，求和算不出 → 金额类数值取服务端脱敏快照（固定本月口径，不随日期范围）
   const isAdv = window.YP_ROLE==='advanced';
@@ -2112,8 +2100,21 @@ function renderAi(){
   </tr>`).join('') : emptyRow(13,'🤖','暂无符合条件的AI成效记录');
 }
 
+// 品牌下拉选项跟随数据生成（原来写死「逸品/逸品孵化」）：owner 是真实品牌名，
+// advanced 是打码后的品牌（**／****），viewer 是示例品牌——写死的话后两种身份会筛出空
+function syncBrandOptions(data){
+  const brands=[...new Set([...(data.ads||[]),...(data.reviews||[]),...(data.keywords||[])].map(r=>r.brand))].filter(Boolean).sort();
+  ['ov-brand','report-brand','ads-brand','rv-brand','kw-brand'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">全部品牌</option>'+brands.map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('');
+    if(brands.includes(cur)) sel.value=cur;
+  });
+}
+
 function initData(data, animated){
   D = data;
+  syncBrandOptions(data);
   const withGrp = data.ads.filter(a=>a.group).length;
   const t0=today0(), tv=t0.getFullYear()*10000+t0.getMonth()*100+t0.getDate();
   const t1v=(()=>{const d=new Date(t0.getTime()+864e5);return d.getFullYear()*10000+d.getMonth()*100+d.getDate();})();
@@ -2190,6 +2191,8 @@ async function saveRolePw(role){
 
 // ── 启动 ──────────────────────────────────────────────
 document.getElementById(window.YP_ROLE==='owner'?'set-panel':'set-denied').style.display='';
+// 普通访问者：常驻醒目的「示例数据」横幅（数据本身是服务端写死的虚拟示例）
+if(window.YP_ROLE==='viewer') document.getElementById('demoBanner').style.display='';
 // 受限模块的导航计数徽章对受限身份隐藏（数字本身也是信息）
 Object.keys(PAGE_DENY).forEach(pg=>{ if(!pageAllowed(pg)){ const c=document.querySelector(`.nav-item[data-page="${pg}"] .nav-cnt`); if(c) c.style.display='none'; } });
 initPresets();

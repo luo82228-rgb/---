@@ -1,6 +1,7 @@
 import { fetchAllData } from './sheets';
 import { handleLogin, handleLogout, loginPage, verifyTicket, verifySession, handleChangePassword, Role } from './auth';
 import { buildViewerOverview, maskDataForAdvanced, OverviewInput } from './overview';
+import { buildDemoData } from './demo';
 
 interface Env {
   ASSETS: Fetcher;
@@ -50,17 +51,22 @@ export default {
       return handleChangePassword(request, env, sessionRole);
     }
 
-    if (pathname === '/api/all') {
+    if (pathname === '/api/all' || pathname === '/api/refresh') {
+      // 普通访问者：不抓取任何真实数据，直接返回写死的示例载荷（2026-06-11 方案）；
+      // 也不碰缓存——viewer 点「同步数据」不应清掉别人的全量缓存
+      if (sessionRole === 'viewer') {
+        return new Response(JSON.stringify(buildDemoData()), {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        });
+      }
       const cache = caches.default;
+      if (pathname === '/api/refresh') {
+        await cache.delete(new Request(CACHE_KEY));
+        return trimForRole(await buildAndCache(cache), sessionRole);
+      }
       const cached = await cache.match(new Request(CACHE_KEY));
       const res = cached || (await buildAndCache(cache));
       return trimForRole(res, sessionRole);
-    }
-
-    if (pathname === '/api/refresh') {
-      const cache = caches.default;
-      await cache.delete(new Request(CACHE_KEY));
-      return trimForRole(await buildAndCache(cache), sessionRole);
     }
 
     if (pathname === '/api/debug') {
@@ -93,21 +99,16 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 // 数据级隔离（与前端 PAGE_DENY 矩阵对应）：
-// - viewer：只拿到服务端算好、数值已打码的总览快照（viewer_overview），原始明细数组一律置空；
-// - advanced：明细全量下发但内容字段 80% 打码、骨架字段保留（maskDataForAdvanced），
-//   金额类求和前端算不出，同样附上脱敏快照（本月口径）供总览取「收款金额」；
+// - viewer：不会走到这里——路由层直接返回 buildDemoData() 的虚拟示例载荷，真实数据零下发；
+// - advanced：明细全量下发但内容字段打码、骨架字段保留（maskDataForAdvanced），
+//   金额类求和前端算不出，附上脱敏快照（viewer_overview 字段，本月口径）供总览取「收款金额」；
 // - owner：全量不裁。缓存仍存全量，逐请求按身份裁剪
 async function trimForRole(res: Response, role: Role): Promise<Response> {
-  if (role === 'owner') return res;
+  if (role !== 'advanced') return res;
   try {
     const data = (await res.json()) as Record<string, unknown>;
-    const hasArrays = Array.isArray(data.ads) && Array.isArray(data.reviews) && Array.isArray(data.keywords);
-    if (hasArrays) {
+    if (Array.isArray(data.ads) && Array.isArray(data.reviews) && Array.isArray(data.keywords)) {
       data.viewer_overview = buildViewerOverview(data as unknown as OverviewInput);
-    }
-    if (role === 'viewer') {
-      for (const k of ['ads', 'reviews', 'keywords', 'tasks', 'ai_items']) if (k in data) data[k] = [];
-    } else if (hasArrays) {
       maskDataForAdvanced(data); // 必须在 buildViewerOverview 之后——快照要用原文算
     }
     return new Response(JSON.stringify(data), {
