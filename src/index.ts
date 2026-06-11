@@ -1,6 +1,6 @@
 import { fetchAllData } from './sheets';
 import { handleLogin, handleLogout, loginPage, verifyTicket, verifySession, handleChangePassword, Role } from './auth';
-import { buildViewerOverview, maskDataForAdvanced, OverviewInput } from './overview';
+import { buildViewerOverview, buildBizMonitor, maskDataForAdvanced, OverviewInput } from './overview';
 import { buildDemoData } from './demo';
 
 interface Env {
@@ -91,11 +91,11 @@ export default {
       const cache = caches.default;
       if (pathname === '/api/refresh') {
         await cache.delete(new Request(CACHE_KEY));
-        return trimForRole(await buildAndCache(cache), sessionRole);
+        return trimForRole(await buildAndCache(cache), sessionRole, env);
       }
       const cached = await cache.match(new Request(CACHE_KEY));
       const res = cached || (await buildAndCache(cache));
-      return trimForRole(res, sessionRole);
+      return trimForRole(res, sessionRole, env);
     }
 
     if (pathname === '/api/debug') {
@@ -132,13 +132,16 @@ export default {
 // - advanced：明细全量下发但内容字段打码、骨架字段保留（maskDataForAdvanced），
 //   金额类求和前端算不出，附上脱敏快照（viewer_overview 字段，本月口径）供总览取「收款金额」；
 // - owner：全量不裁。缓存仍存全量，逐请求按身份裁剪
-async function trimForRole(res: Response, role: Role): Promise<Response> {
+async function trimForRole(res: Response, role: Role, env: Env): Promise<Response> {
   if (role !== 'advanced') return res;
   try {
     const data = (await res.json()) as Record<string, unknown>;
     if (Array.isArray(data.ads) && Array.isArray(data.reviews) && Array.isArray(data.keywords)) {
       data.viewer_overview = buildViewerOverview(data as unknown as OverviewInput);
-      maskDataForAdvanced(data); // 必须在 buildViewerOverview 之后——快照要用原文算
+      // 商务状态监测快照（2026-06-11 用户要求 advanced 也展示、打码）：原文复刻扣分键查 KV 后按月聚合
+      const ded = ((await env.AUTH_KV.get('bizded:v1', 'json')) as Record<string, number> | null) || {};
+      data.biz_monitor = buildBizMonitor(data as unknown as OverviewInput, ded);
+      maskDataForAdvanced(data); // 必须在两个快照之后——都要用原文算
     }
     return new Response(JSON.stringify(data), {
       status: res.status,

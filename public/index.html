@@ -1679,20 +1679,33 @@ function renderBizMon(br){
       +`<path d="${d}" style="fill:none;stroke:var(--accent);stroke-width:2.6;stroke-linecap:round" filter="url(#wsh)"/>`
       +dots+`</svg>`;
   };
-  const list=Object.entries(by).map(([name,arr])=>{
-    const stats=calc(arr);
-    // 人工扣分按审查记录的审查日期归月；得分/血条/评级只看本月，K线看近6个月
-    const dedByM={};
-    bizIssueList(name).all.forEach(({key:k,date})=>{
-      const p=+BIZDED[k]||0; if(!p) return;
-      const d=parseDate(date); if(!d) return;   // 审查问题按审查日期、关键词按登记时间归月
-      const m=d.getFullYear()*100+(d.getMonth()+1);
-      dedByM[m]=(dedByM[m]||0)+p;
+  let list;
+  if(window.YP_ROLE==='advanced'&&Array.isArray(D.biz_monitor)){
+    // 高级访问者：明细已打码拼不出扣分记录键 → 用服务端快照 biz_monitor（商务名已打码，
+    // 每月扣分服务端按原文算好；快照不分品牌，品牌筛选对本板块不生效）
+    list=D.biz_monitor.map(s=>{
+      const dedByM=s.ded||{};
+      return {name:s.name,live:s.live,overdue:s.overdue,
+        score:Math.max(0,100-(dedByM[curM]||0)),
+        mScores:months.map(m=>Math.max(0,100-(dedByM[m]||0)))};
     });
-    const score=Math.max(0,100-(dedByM[curM]||0));
-    const mScores=months.map(m=>Math.max(0,100-(dedByM[m]||0)));
-    return {name,...stats,score,mScores};
-  }).sort((x,y)=>y.score-x.score||x.name.localeCompare(y.name));
+  }else{
+    list=Object.entries(by).map(([name,arr])=>{
+      const stats=calc(arr);
+      // 人工扣分按审查记录的审查日期归月；得分/血条/评级只看本月，K线看近6个月
+      const dedByM={};
+      bizIssueList(name).all.forEach(({key:k,date})=>{
+        const p=+BIZDED[k]||0; if(!p) return;
+        const d=parseDate(date); if(!d) return;   // 审查问题按审查日期、关键词按登记时间归月
+        const m=d.getFullYear()*100+(d.getMonth()+1);
+        dedByM[m]=(dedByM[m]||0)+p;
+      });
+      const score=Math.max(0,100-(dedByM[curM]||0));
+      const mScores=months.map(m=>Math.max(0,100-(dedByM[m]||0)));
+      return {name,...stats,score,mScores};
+    });
+  }
+  list.sort((x,y)=>y.score-x.score||x.name.localeCompare(y.name));
   document.getElementById('bizMonCnt').textContent=`共 ${list.length} 位商务`;
   document.getElementById('bizMonTb').innerHTML=list.length?list.map(r=>{
     const grade=r.score>=100?['S','#f59e0b']:r.score>=90?['A','#22c55e']:r.score>=80?['B','#2563eb']:r.score>=70?['C','#eab308']:['D','#ef4444'];

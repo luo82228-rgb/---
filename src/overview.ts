@@ -6,9 +6,9 @@
 //
 // 本文件还包含高级访问者的整库打码 maskDataForAdvanced（见文件末尾）。
 
-interface AdRow { ad_no: string; brand: string; group: string; amount: string; pay_status: string; pay_time: string; expire_time: string }
-interface ReviewRow { date: string; brand: string; ad_no: string; has_issue: string }
-interface KwRow { brand: string; source: string; log_time: string; status: string }
+interface AdRow { ad_no: string; brand: string; group: string; amount: string; pay_status: string; pay_time: string; expire_time: string; biz_name?: string }
+interface ReviewRow { date: string; brand: string; ad_no: string; has_issue: string; target?: string }
+interface KwRow { brand: string; source: string; log_time: string; status: string; no?: string }
 
 export interface OverviewInput { ads: AdRow[]; reviews: ReviewRow[]; keywords: KwRow[] }
 
@@ -99,6 +99,52 @@ export function buildViewerOverview(data: OverviewInput): ViewerOverview {
   return { range_label: '本月', stats, brands };
 }
 
+// ── 商务状态监测的服务端快照（advanced 用，2026-06-11）──
+// advanced 的商务名/品牌/编号都打了码，前端拼不出扣分记录键，所以这里用【原文】数据复刻前端
+// bizIssueList 的键（审查：日期|品牌|广告编号|同组序号；关键词：kw|商务|编号）查 KV 的扣分映射，
+// 按月聚合后随 /api/all 下发（biz_monitor 字段），name 随后在 maskDataForAdvanced 里打码。
+// ⚠️ 必须在 maskDataForAdvanced 之前调用；键的拼法/统计口径改前端时这里要同步改！
+const BIZ_NAMES = ['郭永正', '卢登', '吴挺', '陈亦凡', '刘知曲', '杨海瑞']; // 与前端 BIZ_COLORS 名单同步维护
+
+export interface BizMonRow { name: string; live: number; overdue: number; ded: Record<string, number> }
+
+export function buildBizMonitor(data: OverviewInput, ded: Record<string, number>): BizMonRow[] {
+  const nowCN = new Date(Date.now() + HOUR8);
+  const todayV = nowCN.getUTCFullYear() * 10000 + nowCN.getUTCMonth() * 100 + nowCN.getUTCDate();
+  const dayVal = (s: string) => { const t = parseDateCN(s); if (t === null) return null; const d = new Date(t); return d.getUTCFullYear() * 10000 + d.getUTCMonth() * 100 + d.getUTCDate(); };
+  const monthVal = (s: string) => { const t = parseDateCN(s); if (t === null) return null; const d = new Date(t); return d.getUTCFullYear() * 100 + (d.getUTCMonth() + 1); };
+  const by: Record<string, AdRow[]> = {};
+  for (const a of data.ads) {
+    if (!a.group) continue;
+    const n = a.biz_name || '';
+    if (!BIZ_NAMES.some(k => n.includes(k))) continue;
+    (by[n] = by[n] || []).push(a);
+  }
+  return Object.entries(by).map(([name, arr]) => {
+    const live = arr.filter(a => !(a.pay_status || '').includes('已下架'));
+    const overdue = live.filter(a => { const v = dayVal(a.expire_time); return v !== null && v < todayV; });
+    const dedByM: Record<string, number> = {};
+    const seen: Record<string, number> = {};
+    for (const r of data.reviews) {
+      if (r.has_issue !== '有' || !String(r.target || '').includes(name)) continue;
+      const base = `${r.date}|${r.brand}|${r.ad_no}`;
+      const occ = seen[base] = (seen[base] || 0) + 1;
+      const p = ded[`${base}|${occ}`] || 0;
+      if (!p) continue;
+      const m = monthVal(r.date);
+      if (m !== null) dedByM[m] = (dedByM[m] || 0) + p;
+    }
+    for (const k of data.keywords) {
+      if (!kwIsRisk(k)) continue;
+      const p = ded[`kw|${name}|${k.no || k.log_time}`] || 0;
+      if (!p) continue;
+      const m = monthVal(k.log_time);
+      if (m !== null) dedByM[m] = (dedByM[m] || 0) + p;
+    }
+    return { name, live: live.length, overdue: overdue.length, ded: dedByM };
+  });
+}
+
 // ── 高级访问者整库打码（2026-06-11）──
 // 原则：内容字段 80% 打码，骨架字段（日期/时间、品牌、各类状态/类型/方式）保留明文，
 // 保证前端的时间/品牌筛选、关键词三卡、审查三卡、今日关注到期判断、徽标渲染照常工作。
@@ -175,5 +221,10 @@ export function maskDataForAdvanced(data: Record<string, unknown>): void {
       b.amount = maskFull(b.amount);
       b.brand = maskUnique(b.brand, maskFull);
     }
+  }
+  // 商务监测快照：商务名用 maskText 打码——与明细行 biz_name 的打码方式一致（同为确定性 80% 打码，
+  // 前端点快照名弹明细时按打码后的 target 匹配仍然成立）
+  if (Array.isArray(data.biz_monitor)) {
+    for (const r of data.biz_monitor as Row[]) if (r.name) r.name = maskText(String(r.name));
   }
 }
