@@ -646,6 +646,19 @@ code.adno{text-shadow:0 0 10px rgba(139,156,255,.4)}
         </div>
         <div id="brandTable"><div class="empty"><div class="ei">📊</div><div class="et">加载中…</div></div></div>
       </div>
+      <!-- 商务状态监测（2026-06-11 加）：按商务花名聚合,口径见 renderBizMon 注释 -->
+      <div class="tbox" id="bizMonBox">
+        <div class="tbox-head">
+          <span class="tbox-title">商务状态监测</span>
+          <span class="t-count" id="bizMonCnt"></span>
+        </div>
+        <div class="t-wrap">
+          <table class="dt">
+            <thead><tr><th>商务花名</th><th>状态情况</th><th>得分</th><th>评级</th><th>月度趋势</th></tr></thead>
+            <tbody id="bizMonTb"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- 日报 -->
@@ -1587,6 +1600,46 @@ function renderOverview(){
     return `<tr><td><span class="brand">${esc(brand)}</span></td><td>${cellb(brGrp.length,'ads')}</td><td>${amtCell}</td><td>${cellb(reviewCnt,'check')}</td><td>${cellb(brv.length,'rvs')}</td><td>${cellb(brk.length,'kws')}</td><td>${cellb(coverSet.size,'cover')}</td><td>${issCell}</td></tr>`;
   }).join('');
   document.getElementById('brandTable').innerHTML = `<table class="dt"><thead><tr><th>品牌</th><th>收款广告数</th><th>收款金额</th><th>审查次数</th><th>审查台账</th><th>关键词</th><th>覆盖群</th><th>发现问题</th></tr></thead><tbody>${rows}</tbody></table>`;
+  renderBizMon(br);
+}
+// ── 商务状态监测（2026-06-11 加，品牌汇总下方）──
+// 口径 v1：按商务花名聚合全部带群广告；受品牌筛选、不随总览日期范围（趋势本身跨月）。
+// 在投=未下架；超期=在投且到期日<今天（对齐今日关注#5 的排除已下架）；
+// 状态：有「无备注超期」→风险，有超期→需关注，有在投→正常，否则→无在投（备注判定同 overdueRiskIdx 高风险=空备注）；
+// 得分(100)=收款率×60+超期处理×40（超期处理=1-无备注超期/超期数，无超期记满分；收款率口径同 isPaid 含已下架）；
+// 评级：A≥85 / B≥70 / C≥55 / D<55；月度趋势=近6个月广告条数（按打款时间）迷你柱线。
+function renderBizMon(br){
+  const t0=today0(), tv=t0.getFullYear()*10000+t0.getMonth()*100+t0.getDate();
+  const ads=D.ads.filter(a=>a.group&&(!br||a.brand===br));
+  const by={};
+  ads.forEach(a=>{ const k=a.biz_name||'未填写'; (by[k]=by[k]||[]).push(a); });
+  const months=[];
+  for(let i=5;i>=0;i--){ const d=new Date(t0.getFullYear(),t0.getMonth()-i,1); months.push(d.getFullYear()*100+(d.getMonth()+1)); }
+  const SPARK='▁▂▃▄▅▆▇█';
+  const list=Object.entries(by).map(([name,arr])=>{
+    const live=arr.filter(a=>!(a.pay_status||'').includes('已下架'));
+    const overdue=live.filter(a=>{ const d=parseDate(a.expire_time); return d&&d.getFullYear()*10000+d.getMonth()*100+d.getDate()<tv; });
+    const odBad=overdue.filter(a=>!(a.remark||'').trim()).length;
+    const payRate=arr.length?arr.filter(isPaid).length/arr.length:0;
+    const odOk=overdue.length?1-odBad/overdue.length:1;
+    const score=Math.round(payRate*60+odOk*40);
+    const cnt=months.map(m=>arr.filter(a=>{ const d=parseDate(a.pay_time); return d&&d.getFullYear()*100+(d.getMonth()+1)===m; }).length);
+    return {name,live:live.length,overdue:overdue.length,odBad,score,cnt};
+  }).sort((x,y)=>y.score-x.score||x.name.localeCompare(y.name));
+  document.getElementById('bizMonCnt').textContent=`共 ${list.length} 位商务`;
+  document.getElementById('bizMonTb').innerHTML=list.length?list.map(r=>{
+    const grade=r.score>=85?['A','#22c55e']:r.score>=70?['B','#2563eb']:r.score>=55?['C','#eab308']:['D','#ef4444'];
+    const st=r.odBad?pill('风险','#ef4444'):r.overdue?pill('需关注','#eab308'):r.live?pill('正常','#22c55e'):pill('无在投','#94a3b8');
+    const mx=Math.max(1,...r.cnt);
+    const spark=r.cnt.map(c=>SPARK[Math.round(c/mx*7)]).join('');
+    const tip=`近6个月广告条数：${months.map((m,i)=>`${m%100}月${r.cnt[i]}`).join(' / ')}`;
+    return `<tr>
+    <td>${bizName(r.name)}</td>
+    <td>${st} <span style="color:var(--text-secondary);font-size:12px">在投 ${r.live} · 超期 ${r.overdue}${r.odBad?` · 无备注超期 ${r.odBad}`:''}</span></td>
+    <td style="color:${grade[1]};font-weight:700">${r.score}</td>
+    <td>${pill(grade[0],grade[1])}</td>
+    <td><span title="${esc(tip)}" style="color:var(--accent);font-size:16px;letter-spacing:3px;cursor:default">${spark}</span></td>
+  </tr>`;}).join(''):emptyRow(5,'👤','暂无商务数据');
 }
 // ── 品牌汇总单元格徽标的明细下拉 ──（按当前总览日期范围 + 该行品牌口径，与汇总数字一致）
 let _ovRow=null;
