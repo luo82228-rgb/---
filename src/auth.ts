@@ -191,7 +191,7 @@ export function loginPage(error = '', status = 200, selectedRole: Role = 'owner'
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#0b0e1a}
-body::before{content:'';position:fixed;inset:0;background:#e9e2d0 url(/fuchun-tile.jpg) repeat-x center/auto 100%;opacity:.55;z-index:0}
+body::before{content:'';position:fixed;inset:0;background:#f7f5ef url(/fuchun-tile.jpg) repeat-x center/auto 100%;opacity:.55;z-index:0}
 body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 120%,rgba(11,14,26,.25),rgba(11,14,26,.85));z-index:1}
 .card{position:relative;z-index:2;width:min(430px,92vw);padding:40px 34px 30px;border-radius:18px;background:rgba(16,19,32,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 60px rgba(0,0,0,.5);text-align:center}
 h1{font-size:22px;font-weight:700;background:linear-gradient(120deg,#7dd3fc,#a78bfa,#f0abfc);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px}
